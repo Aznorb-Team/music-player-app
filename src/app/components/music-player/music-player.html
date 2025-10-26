@@ -1,0 +1,54 @@
+<p-toolbar class="container">
+  <audio
+    #audioPlayer
+    [src]=""
+  >
+  </audio>
+  <div class="container__info">
+<!--    icon = "pi pi-user" -->
+    <p-avatar
+      class="container__info__avatar"
+      size="xlarge"
+      shape="circle"
+      image="https://is1-ssl.mzstatic.com/image/thumb/Video113/v4/00/f9/57/00f95716-b496-9c75-364e-00a2a3654690/0045778240661_USEP61933001.jpg/720x405mv.jpg"
+    />
+    <div class="container__info__text-container">
+      <span class="container__info__text-container__name">DRUGS</span>
+      <span class="container__info__text-container__author">Falling In Reverse</span>
+    </div>
+  </div>
+  <div class="container__controls-track">
+    <p-button icon="pi pi-step-backward-alt" [rounded]="true" [text]="true" severity="warn" />
+<!--    pi-play -->
+    <p-button icon="pi pi-pause" [rounded]="true" severity="warn" [outlined]="true" />
+    <p-button icon="pi pi-step-forward-alt" [rounded]="true" [text]="true" severity="warn" />
+  </div>
+  <div class="container__timeline-container">
+    <p-progressbar class="container__timeline-container__timeline" [value]="50">
+      <ng-template #content let-value>
+        <span>{{ "" }}</span>
+      </ng-template>
+    </p-progressbar>
+    <div class="container__timeline-container__time">
+      <span>01:44</span>
+      <span>03:28</span>
+    </div>
+  </div>
+  <div class="container__controls-player">
+    <p-button icon="pi pi-heart" [rounded]="true" [text]="true" severity="warn" />
+    <p-button icon="pi pi-replay" [rounded]="true" [text]="true" severity="warn"/>
+<!--    pi-volume-down / pi-volume-off-->
+    <p-button
+      (click)="volumePopover.toggle($event)"
+      icon="pi pi-volume-up"
+      [rounded]="true"
+      [text]="true"
+      severity="warn"
+    />
+  </div>
+</p-toolbar>
+<p-popover #volumePopover>
+  <ng-template #content>
+    <p-slider orientation="vertical" class="slider-volume" />
+  </ng-template>
+</p-popover>
