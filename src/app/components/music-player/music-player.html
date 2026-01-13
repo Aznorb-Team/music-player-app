@@ -1,11 +1,7 @@
 <p-toolbar class="container">
-  <audio
-    #audioPlayer
-    [src]=""
-  >
-  </audio>
+  <audio #audioPlayer [src]="'audio/YOR - Без цензуры.mp3'"></audio>
   <div class="container__info">
-<!--    icon = "pi pi-user" -->
+    <!--    icon = "pi pi-user" -->
     <p-avatar
       class="container__info__avatar"
       size="xlarge"
@@ -14,30 +10,66 @@
     />
     <div class="container__info__text-container">
       <span class="container__info__text-container__name">DRUGS</span>
-      <span class="container__info__text-container__author">Falling In Reverse</span>
+      <span class="container__info__text-container__author"
+        >Falling In Reverse</span
+      >
     </div>
   </div>
   <div class="container__controls-track">
-    <p-button icon="pi pi-step-backward-alt" [rounded]="true" [text]="true" severity="warn" />
-<!--    pi-play -->
-    <p-button icon="pi pi-pause" [rounded]="true" severity="warn" [outlined]="true" />
-    <p-button icon="pi pi-step-forward-alt" [rounded]="true" [text]="true" severity="warn" />
+    <p-button
+      icon="pi pi-step-backward-alt"
+      [rounded]="true"
+      [text]="true"
+      severity="warn"
+    />
+    <p-button
+      icon="{{ isPlay() ? 'pi pi-pause' : 'pi pi-play' }}"
+      [rounded]="true"
+      severity="warn"
+      [outlined]="true"
+      (onClick)="clickOnPlayPause()"
+    />
+    <p-button
+      icon="pi pi-step-forward-alt"
+      [rounded]="true"
+      [text]="true"
+      severity="warn"
+    />
   </div>
-  <div class="container__timeline-container">
-    <p-progressbar class="container__timeline-container__timeline" [value]="50">
-      <ng-template #content let-value>
-        <span>{{ "" }}</span>
-      </ng-template>
-    </p-progressbar>
+  <form class="container__timeline-container">
+    <p-slider
+      [formControl]="musicProgressBar"
+      [min]="0"
+      [max]="100"
+      class="container__timeline-container__timeline"
+      (onChange)="isDrag()"
+      (onSlideEnd)="seekAudio($event.value || 0)"
+    />
+    <!--    <p-progressbar class="container__timeline-container__timeline" [value]="50">-->
+    <!--      <ng-template #content let-value>-->
+    <!--        <span>{{ "" }}</span>-->
+    <!--      </ng-template>-->
+    <!--    </p-progressbar>-->
     <div class="container__timeline-container__time">
-      <span>01:44</span>
-      <span>03:28</span>
+      <span>{{ startTime | time }}</span>
+      <span>{{ endTime | time }}</span>
     </div>
-  </div>
+  </form>
   <div class="container__controls-player">
-    <p-button icon="pi pi-heart" [rounded]="true" [text]="true" severity="warn" />
-    <p-button icon="pi pi-replay" [rounded]="true" [text]="true" severity="warn"/>
-<!--    pi-volume-down / pi-volume-off-->
+    <p-button
+      icon="pi pi-heart"
+      [rounded]="true"
+      [text]="true"
+      severity="warn"
+    />
+    <p-button
+      icon="pi pi-replay"
+      [rounded]="true"
+      [text]="true"
+      severity="warn"
+      (onClick)="onReset()"
+    />
+    <!--    pi-volume-down / pi-volume-off-->
     <p-button
       (click)="volumePopover.toggle($event)"
       icon="pi pi-volume-up"
@@ -49,6 +81,12 @@
 </p-toolbar>
 <p-popover #volumePopover>
   <ng-template #content>
-    <p-slider orientation="vertical" class="slider-volume" />
+    <form>
+      <p-slider
+        [formControl]="volumeForm"
+        orientation="vertical"
+        class="slider-volume"
+      />
+    </form>
   </ng-template>
 </p-popover>

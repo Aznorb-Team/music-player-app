@@ -1,78 +1,115 @@
 <div class="main-application-panel">
   <p-panel [header]="title()" class="main-application-panel__side-menu">
-      <p-panel-menu [model]="itemsMain()" class="main-application-panel__side-menu__main">
-        <ng-template #item let-item>
-            <a pRipple class="main-application-panel__side-menu__main__item">
-                <i [class]="item.icon + ' main-application-panel__side-menu__main__item__icon'"></i>
-                <span class="main-application-panel__side-menu__main__item__span">
-                    {{ item.label }}
-                </span>
-                @if (item.badge) {
-                  <p-badge class="main-application-panel__side-menu__main__item__badge" [value]="item.badge" />
-                }
+    <p-panel-menu
+      [model]="itemsMain()"
+      class="main-application-panel__side-menu__main"
+    >
+      <ng-template #item let-item>
+        <a pRipple class="main-application-panel__side-menu__main__item">
+          <i
+            [class]="
+              item.icon + ' main-application-panel__side-menu__main__item__icon'
+            "
+          ></i>
+          <span class="main-application-panel__side-menu__main__item__span">
+            {{ item.label }}
+          </span>
+          @if (item.badge) {
+            <p-badge
+              class="main-application-panel__side-menu__main__item__badge"
+              [value]="item.badge"
+            />
+          }
 
-                @if (item.shortcut) {
-                  <span class="main-application-panel__side-menu__main__item__span">
-                      {{ item.shortcut }}
-                  </span>
-                }
-            </a>
-        </ng-template>
-      </p-panel-menu>
-      <br />
-      <hr />
-      <br />
-      <p-panelmenu [model]="itemsUser()" class="main-application-panel__side-menu__user">
-        <ng-template #item let-item>
-          <a pRipple class="main-application-panel__side-menu__user__item">
-            <i [class]="item.icon + ' main-application-panel__side-menu__user__item__icon'"></i>
+          @if (item.shortcut) {
+            <span class="main-application-panel__side-menu__main__item__span">
+              {{ item.shortcut }}
+            </span>
+          }
+        </a>
+      </ng-template>
+    </p-panel-menu>
+    <br />
+    <hr />
+    <br />
+    <p-panelmenu
+      [model]="itemsUser()"
+      class="main-application-panel__side-menu__user"
+    >
+      <ng-template #item let-item>
+        <a pRipple class="main-application-panel__side-menu__user__item">
+          <i
+            [class]="
+              item.icon + ' main-application-panel__side-menu__user__item__icon'
+            "
+          ></i>
+          <span class="main-application-panel__side-menu__user__item__span">
+            {{ item.label }}
+          </span>
+          @if (item.badge) {
+            <p-badge
+              class="main-application-panel__side-menu__user__item__badge"
+              [value]="item.badge"
+            />
+          }
+
+          @if (item.shortcut) {
             <span class="main-application-panel__side-menu__user__item__span">
-                      {{ item.label }}
-                  </span>
-            @if (item.badge) {
-              <p-badge class="main-application-panel__side-menu__user__item__badge" [value]="item.badge" />
-            }
+              {{ item.shortcut }}
+            </span>
+          }
+        </a>
+      </ng-template>
+    </p-panelmenu>
+  </p-panel>
 
-            @if (item.shortcut) {
-              <span class="main-application-panel__side-menu__user__item__span">
-                        {{ item.shortcut }}
-                    </span>
-            }
-          </a>
-        </ng-template>
-      </p-panelmenu>
-    </p-panel>
+  <div class="main-application-panel__container">
+    <div class="main-application-panel__container__header">
+      <p-inputgroup
+        class="main-application-panel__container__header__search-field"
+      >
+        <input pInputText placeholder="Поиск" />
+        <p-inputgroup-addon>
+          <p-button
+            icon="pi pi-search"
+            severity="secondary"
+            variant="text"
+            (click)="$event.stopPropagation()"
+          />
+        </p-inputgroup-addon>
+      </p-inputgroup>
 
-    <div class="main-application-panel__container">
-      <div class="main-application-panel__container__header">
-        <p-inputgroup class="main-application-panel__container__header__search-field">
-          <input pInputText placeholder="Поиск" />
-          <p-inputgroup-addon>
-            <p-button icon="pi pi-search" severity="secondary" variant="text" (click)="$event.stopPropagation()" />
-          </p-inputgroup-addon>
-        </p-inputgroup>
-
-        <div class="main-application-panel__container__header__user-panel">
-          <div class="main-application-panel__container__header__user-panel__container">
-            <p-toggleswitch [formControl]="isDarkMode" class="main-application-panel__container__header__user-panel__container__toogle"/>
-            <i
-              [ngClass]="isDarkMode.getRawValue() ? 'pi pi-moon' : 'pi pi-sun'"
-              class="main-application-panel__container__header__user-panel__container__icon"
-            ></i>
-          </div>
-
-          <p-button label="Войти" />
+      <div class="main-application-panel__container__header__user-panel">
+        <div
+          class="main-application-panel__container__header__user-panel__container"
+        >
+          <p-toggleswitch
+            [formControl]="isDarkMode"
+            class="main-application-panel__container__header__user-panel__container__toogle"
+          />
+          <i
+            [ngClass]="isDarkMode.getRawValue() ? 'pi pi-moon' : 'pi pi-sun'"
+            class="main-application-panel__container__header__user-panel__container__icon"
+          ></i>
         </div>
-      </div>
 
-      <p-panel header="" class="main-application-panel__container__router-outlet">
-        <router-outlet></router-outlet>
-      </p-panel>
+        <p-button label="Войти" />
+      </div>
     </div>
+
+    <p-panel header="" class="main-application-panel__container__router-outlet">
+      <router-outlet></router-outlet>
+    </p-panel>
+  </div>
 </div>
 <div class="music-player">
   <div class="music-player__panel">
     <music-player></music-player>
   </div>
 </div>
-<p-toast [showTransitionOptions]="'250ms'" [showTransformOptions]="'translateX(100%)'" [hideTransitionOptions]="'150ms'" [hideTransformOptions]="'translateX(100%)'" />
+<p-toast
+  [showTransitionOptions]="'250ms'"
+  [showTransformOptions]="'translateX(100%)'"
+  [hideTransitionOptions]="'150ms'"
+  [hideTransformOptions]="'translateX(100%)'"
+/>
