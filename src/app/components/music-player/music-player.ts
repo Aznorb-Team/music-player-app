@@ -21,6 +21,7 @@ import {
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TimePipe } from '../../core/pipes/time.pipe';
+import { MiniCardComponent } from './mini-card/mini-card';
 
 @Component({
   selector: 'music-player',
@@ -36,6 +37,7 @@ import { TimePipe } from '../../core/pipes/time.pipe';
     FormsModule,
     ReactiveFormsModule,
     TimePipe,
+    MiniCardComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

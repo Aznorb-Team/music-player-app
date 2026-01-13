@@ -1,5 +1,5 @@
 <p-toolbar class="container">
-  <audio #audioPlayer [src]="'audio/YOR - Без цензуры.mp3'"></audio>
+  <audio #audioPlayer [src]="'audio/Falling In Reverse - Drugs.mp3'"></audio>
   <div class="container__info">
     <!--    icon = "pi pi-user" -->
     <p-avatar
@@ -7,7 +7,11 @@
       size="xlarge"
       shape="circle"
       image="https://is1-ssl.mzstatic.com/image/thumb/Video113/v4/00/f9/57/00f95716-b496-9c75-364e-00a2a3654690/0045778240661_USEP61933001.jpg/720x405mv.jpg"
+      (click)="miniCard.toggle($event)"
     />
+    <p-popover #miniCard>
+      <mini-card></mini-card>
+    </p-popover>
     <div class="container__info__text-container">
       <span class="container__info__text-container__name">DRUGS</span>
       <span class="container__info__text-container__author"

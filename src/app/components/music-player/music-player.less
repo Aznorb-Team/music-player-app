@@ -11,10 +11,18 @@
     gap: 1rem;
 
     &__avatar {
+      transition: all 0.5s ease;
+
       ::ng-deep {
         img {
           object-fit: cover !important;
         }
+      }
+
+      &:hover {
+        box-shadow: 0 5px 15px var(--p-button-outlined-warn-color);
+        cursor: pointer;
+        transition: all 0.5s ease;
       }
     }
 

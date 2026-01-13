@@ -61,7 +61,7 @@ export class App implements OnInit {
   private _cacheService = inject(CacheService);
   private _notificationService = inject(NotificationService);
 
-  protected readonly title = signal('Quadronic - Music');
+  protected readonly title = signal('Music');
   protected readonly itemsMain = signal<MenuItem[]>([]);
   protected readonly itemsUser = signal<MenuItem[]>([]);
   protected isDarkMode = new FormControl<boolean>(false);
