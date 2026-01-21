@@ -3,11 +3,11 @@
     <ng-template #header>
       <div
         class="main-application-panel__side-menu__logo"
-        (click)="toogleFullSidebarMenu()"
+        (click)="toggleFullSidebarMenu()"
       >
         <p-avatar image="https://s3.twcstorage.ru/9ef8f19c-17c2739d-638d-4029-b249-cad83a6dc245/main/favicon.jpg" shape="circle" />
         @if (isFullSidebarMenu.getRawValue()) {
-          <span>Music Player</span>
+          <span> {{ title() }} </span>
         }
       </div>
     </ng-template>

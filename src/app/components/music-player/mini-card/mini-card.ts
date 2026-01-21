@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { Card } from 'primeng/card';
 import { Fieldset } from 'primeng/fieldset';
 import { ScrollPanelModule } from 'primeng/scrollpanel';
+import { Button } from 'primeng/button';
 
 @Component({
   selector: 'mini-card',
@@ -9,6 +10,6 @@ import { ScrollPanelModule } from 'primeng/scrollpanel';
   styleUrls: ['./mini-card.less'],
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Card, ScrollPanelModule, Fieldset],
+  imports: [Card, ScrollPanelModule, Fieldset, Button],
 })
 export class MiniCardComponent {}

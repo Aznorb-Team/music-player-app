@@ -5,12 +5,18 @@ import {
   ICacheItem,
 } from './cache-service.schema';
 import { WINDOW } from '../../core/window/window-injectable';
+import { NotificationService } from '../notification-service/notification-service';
+import {
+  ESeverityNotification,
+  ESummuryNotification,
+} from '../notification-service/notification-service.const';
 
 Injectable({
   providedIn: 'root',
 });
 export class CacheService {
   private readonly _window = inject(WINDOW);
+  private readonly _notificationService = inject(NotificationService);
 
   public useCacheService(
     item: ICacheItem,
@@ -54,7 +60,11 @@ export class CacheService {
     if (item.value) {
       this._window.localStorage?.setItem(item.name, item.value);
     } else {
-      // TODO Добавить уведомление, что значение не найдено
+      this._notificationService.showNotification({
+        severity: ESeverityNotification.ERROR,
+        summary: ESummuryNotification.ERROR,
+        detail: 'Ошибка при сохранении данных в локальное хранилище!',
+      });
     }
   }
 
@@ -62,7 +72,11 @@ export class CacheService {
     if (item.value) {
       this._window.sessionStorage?.setItem(item.name, item.value);
     } else {
-      // TODO Добавить уведомление, что значение не найдено
+      this._notificationService.showNotification({
+        severity: ESeverityNotification.ERROR,
+        summary: ESummuryNotification.ERROR,
+        detail: 'Ошибка при сохранении данных в сессионное хранилище!',
+      });
     }
   }
 

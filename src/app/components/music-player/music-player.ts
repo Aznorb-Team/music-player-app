@@ -22,6 +22,14 @@ import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TimePipe } from '../../core/pipes/time.pipe';
 import { MiniCardComponent } from './mini-card/mini-card';
+import { CacheService } from '../../services/cache-service/cache-service';
+import {
+  ETypeActionCache,
+  ETypeCache,
+  ICacheItem,
+} from '../../services/cache-service/cache-service.schema';
+import { ECacheItemName } from '../../app.consts';
+import { tap } from 'rxjs';
 
 @Component({
   selector: 'music-player',
@@ -43,6 +51,7 @@ import { MiniCardComponent } from './mini-card/mini-card';
 })
 export class MusicPlayerComponent implements OnInit {
   private readonly _dr = inject(DestroyRef);
+  private readonly _cacheService = inject(CacheService);
   private readonly _notificationService = inject(NotificationService);
 
   protected isPlay = signal<boolean>(false);
@@ -51,15 +60,20 @@ export class MusicPlayerComponent implements OnInit {
   protected volumeForm = new FormControl<number>(100);
   protected musicProgressBar = new FormControl<number>(0);
 
-  @ViewChild('audioPlayer') myAudioRef!: ElementRef<HTMLAudioElement>;
+  @ViewChild('audioPlayer')
+  set myAudioRef(value: ElementRef<HTMLAudioElement>) {
+    if (value && !this._audioRef) {
+      this._audioRef = value;
+      this._loadVolumeValue();
+    }
+  }
 
-  // protected startTime = computed(
-  //   () => this.myAudioRef?.nativeElement?.currentTime || 0,
-  // );
-  //
-  // protected endTime = computed(
-  //   () => this.myAudioRef?.nativeElement?.duration || 0,
-  // );
+  get myAudioRef(): ElementRef<HTMLAudioElement> {
+    return this._audioRef!;
+  }
+
+  private _audioRef: ElementRef<HTMLAudioElement> | undefined;
+
   protected get startTime(): number {
     return this.myAudioRef?.nativeElement?.currentTime || 0;
   }
@@ -70,6 +84,22 @@ export class MusicPlayerComponent implements OnInit {
 
   public ngOnInit(): void {
     this._subscribeOnChangeVolume();
+  }
+
+  private _loadVolumeValue(): void {
+    const volumeItem: ICacheItem = {
+      name: ECacheItemName.VOLUME,
+    };
+
+    const value = this._cacheService.useCacheService(
+      volumeItem,
+      ETypeCache.LOCAL,
+      ETypeActionCache.LOAD,
+    );
+
+    if (value) {
+      this.volumeForm.setValue(Number(JSON.parse(value)) || 100);
+    }
   }
 
   protected clickOnPlayPause(): void {
@@ -86,13 +116,7 @@ export class MusicPlayerComponent implements OnInit {
   }
 
   private _play(): void {
-    this.myAudioRef.nativeElement.play().then((result) => {
-      this._notificationService.showNotification({
-        severity: ESeverityNotification.INFO,
-        summary: ESummuryNotification.INFO,
-        detail: 'Music Play!',
-      });
-    });
+    this.myAudioRef.nativeElement.play().then((result) => {});
 
     this.myAudioRef.nativeElement.addEventListener('load', this._onLoad);
     this.myAudioRef.nativeElement.addEventListener('playing', this._onPlaying);
@@ -150,7 +174,21 @@ export class MusicPlayerComponent implements OnInit {
 
   private _subscribeOnChangeVolume(): void {
     this.volumeForm.valueChanges
-      .pipe(takeUntilDestroyed(this._dr))
+      .pipe(
+        tap((value) => {
+          const volumeItem: ICacheItem = {
+            name: ECacheItemName.VOLUME,
+            value: value?.toString(),
+          };
+
+          this._cacheService.useCacheService(
+            volumeItem,
+            ETypeCache.LOCAL,
+            ETypeActionCache.SAVE,
+          );
+        }),
+        takeUntilDestroyed(this._dr),
+      )
       .subscribe((value) => {
         if (value) {
           this.myAudioRef.nativeElement.volume = value / 100;

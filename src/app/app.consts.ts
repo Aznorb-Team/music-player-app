@@ -40,6 +40,8 @@ export const SIDE_MENU_CONFIG_USER: MenuItem[] = [
 
 export enum ECacheItemName {
   THEME = 'THEME',
+  VOLUME = 'VOLUME',
+  SIDE_MENU_OPEN = 'SIDE_MENU_OPEN',
 }
 
 export const DARK_THEME_CLASS_NAME = 'my-app-dark';

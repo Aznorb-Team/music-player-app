@@ -1,5 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  effect,
+  inject,
+  OnInit,
+  signal,
+} from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { PanelModule } from 'primeng/panel';
 import { MenuItem } from 'primeng/api';
@@ -63,25 +70,31 @@ export class App implements OnInit {
   private _cacheService = inject(CacheService);
   private _notificationService = inject(NotificationService);
 
-  protected readonly title = signal('Music');
+  protected readonly title = signal('Music Player');
   protected readonly itemsMain = signal<MenuItem[]>([]);
   protected readonly itemsUser = signal<MenuItem[]>([]);
   protected isDarkMode = new FormControl<boolean>(false);
-  protected isFullSidebarMenu = new FormControl<boolean>(false);
+  protected isFullSidebarMenu = new FormControl<boolean>(true);
 
   public ngOnInit(): void {
     this._initSideMenuConfig();
     this._subscribeOnDarkModeToggle();
-    this._loadTheme();
+    this._subscribeOnSideBarToggle();
+    this._loadStartDate();
   }
 
-  protected toogleFullSidebarMenu(): void {
+  protected toggleFullSidebarMenu(): void {
     this.isFullSidebarMenu.setValue(!this.isFullSidebarMenu.getRawValue());
   }
 
   private _initSideMenuConfig(): void {
     this.itemsMain.set(SIDE_MENU_CONFIG_MAIN);
     this.itemsUser.set(SIDE_MENU_CONFIG_USER);
+  }
+
+  private _loadStartDate(): void {
+    this._loadTheme();
+    this._loadSideBarMenu();
   }
 
   private _loadTheme(): void {
@@ -95,10 +108,24 @@ export class App implements OnInit {
       ETypeActionCache.LOAD,
     );
 
-    console.log(valueTheme);
-
     if (valueTheme) {
       this.isDarkMode.setValue(JSON.parse(valueTheme) || false);
+    }
+  }
+
+  private _loadSideBarMenu(): void {
+    const themeItem: ICacheItem = {
+      name: ECacheItemName.SIDE_MENU_OPEN,
+    };
+
+    const valueTheme = this._cacheService.useCacheService(
+      themeItem,
+      ETypeCache.LOCAL,
+      ETypeActionCache.LOAD,
+    );
+
+    if (valueTheme) {
+      this.isFullSidebarMenu.setValue(JSON.parse(valueTheme));
     }
   }
 
@@ -111,8 +138,6 @@ export class App implements OnInit {
             name: ECacheItemName.THEME,
             value: value?.toString(),
           };
-
-          console.log(themeItem);
 
           this._cacheService.useCacheService(
             themeItem,
@@ -128,25 +153,30 @@ export class App implements OnInit {
           if (value) {
             if (!element.classList.contains(DARK_THEME_CLASS_NAME)) {
               element.classList.add(DARK_THEME_CLASS_NAME);
-
-              this._notificationService.showNotification({
-                severity: ESeverityNotification.INFO,
-                summary: ESummuryNotification.INFO,
-                detail: 'Темная тема включена!',
-              });
             }
           } else {
             if (element.classList.contains(DARK_THEME_CLASS_NAME)) {
               element.classList.remove(DARK_THEME_CLASS_NAME);
-
-              this._notificationService.showNotification({
-                severity: ESeverityNotification.INFO,
-                summary: ESummuryNotification.INFO,
-                detail: 'Темная тема отключена!',
-              });
             }
           }
         }
+      });
+  }
+
+  private _subscribeOnSideBarToggle(): void {
+    this.isFullSidebarMenu.valueChanges
+      .pipe(takeUntilDestroyed(this._dr))
+      .subscribe((value) => {
+        const sideBarItem: ICacheItem = {
+          name: ECacheItemName.SIDE_MENU_OPEN,
+          value: value?.toString(),
+        };
+
+        this._cacheService.useCacheService(
+          sideBarItem,
+          ETypeCache.LOCAL,
+          ETypeActionCache.SAVE,
+        );
       });
   }
 }
