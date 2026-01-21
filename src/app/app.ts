@@ -33,6 +33,7 @@ import {
   ESeverityNotification,
   ESummuryNotification,
 } from './services/notification-service/notification-service.const';
+import { Avatar } from 'primeng/avatar';
 
 @Component({
   selector: 'app-root',
@@ -52,6 +53,7 @@ import {
     ReactiveFormsModule,
     MusicPlayerComponent,
     Toast,
+    Avatar,
   ],
   templateUrl: './app.html',
   styleUrl: './app.less',
@@ -65,11 +67,16 @@ export class App implements OnInit {
   protected readonly itemsMain = signal<MenuItem[]>([]);
   protected readonly itemsUser = signal<MenuItem[]>([]);
   protected isDarkMode = new FormControl<boolean>(false);
+  protected isFullSidebarMenu = new FormControl<boolean>(false);
 
   public ngOnInit(): void {
     this._initSideMenuConfig();
     this._subscribeOnDarkModeToggle();
     this._loadTheme();
+  }
+
+  protected toogleFullSidebarMenu(): void {
+    this.isFullSidebarMenu.setValue(!this.isFullSidebarMenu.getRawValue());
   }
 
   private _initSideMenuConfig(): void {

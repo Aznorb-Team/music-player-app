@@ -1,5 +1,16 @@
 <div class="main-application-panel">
-  <p-panel [header]="title()" class="main-application-panel__side-menu">
+  <p-panel class="main-application-panel__side-menu">
+    <ng-template #header>
+      <div
+        class="main-application-panel__side-menu__logo"
+        (click)="toogleFullSidebarMenu()"
+      >
+        <p-avatar image="favicon.jpg" shape="circle" />
+        @if (isFullSidebarMenu.getRawValue()) {
+          <span>Music Player</span>
+        }
+      </div>
+    </ng-template>
     <p-panel-menu
       [model]="itemsMain()"
       class="main-application-panel__side-menu__main"
@@ -11,20 +22,23 @@
               item.icon + ' main-application-panel__side-menu__main__item__icon'
             "
           ></i>
-          <span class="main-application-panel__side-menu__main__item__span">
-            {{ item.label }}
-          </span>
-          @if (item.badge) {
-            <p-badge
-              class="main-application-panel__side-menu__main__item__badge"
-              [value]="item.badge"
-            />
-          }
-
-          @if (item.shortcut) {
+          @if (isFullSidebarMenu.getRawValue()) {
             <span class="main-application-panel__side-menu__main__item__span">
-              {{ item.shortcut }}
+              {{ item.label }}
             </span>
+
+            @if (item.badge) {
+              <p-badge
+                class="main-application-panel__side-menu__main__item__badge"
+                [value]="item.badge"
+              />
+            }
+
+            @if (item.shortcut) {
+              <span class="main-application-panel__side-menu__main__item__span">
+                {{ item.shortcut }}
+              </span>
+            }
           }
         </a>
       </ng-template>
@@ -32,7 +46,7 @@
     <br />
     <hr />
     <br />
-    <p-panelmenu
+    <p-panel-menu
       [model]="itemsUser()"
       class="main-application-panel__side-menu__user"
     >
@@ -43,24 +57,26 @@
               item.icon + ' main-application-panel__side-menu__user__item__icon'
             "
           ></i>
-          <span class="main-application-panel__side-menu__user__item__span">
-            {{ item.label }}
-          </span>
-          @if (item.badge) {
-            <p-badge
-              class="main-application-panel__side-menu__user__item__badge"
-              [value]="item.badge"
-            />
-          }
-
-          @if (item.shortcut) {
+          @if (isFullSidebarMenu.getRawValue()) {
             <span class="main-application-panel__side-menu__user__item__span">
-              {{ item.shortcut }}
+              {{ item.label }}
             </span>
+            @if (item.badge) {
+              <p-badge
+                class="main-application-panel__side-menu__user__item__badge"
+                [value]="item.badge"
+              />
+            }
+
+            @if (item.shortcut) {
+              <span class="main-application-panel__side-menu__user__item__span">
+                {{ item.shortcut }}
+              </span>
+            }
           }
         </a>
       </ng-template>
-    </p-panelmenu>
+    </p-panel-menu>
   </p-panel>
 
   <div class="main-application-panel__container">
@@ -112,4 +128,5 @@
   [showTransformOptions]="'translateX(100%)'"
   [hideTransitionOptions]="'150ms'"
   [hideTransformOptions]="'translateX(100%)'"
+  [styleClass]="'toast'"
 />

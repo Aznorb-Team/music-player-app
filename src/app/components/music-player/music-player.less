@@ -6,12 +6,28 @@
   flex-direction: row;
   padding: 0 5rem;
 
+  @media (orientation: portrait) {
+    padding: 0 0.1rem;
+  }
+
   &__info {
     display: flex;
     gap: 1rem;
+    justify-content: center;
+    align-items: center;
+
+    @media (orientation: portrait) {
+      gap: 0.5rem;
+      padding: 0 1.5rem;
+    }
 
     &__avatar {
       transition: all 0.5s ease;
+
+      @media (orientation: portrait) {
+        width: 32px;
+        height: 32px;
+      }
 
       ::ng-deep {
         img {
@@ -31,6 +47,12 @@
       flex-direction: column;
       justify-content: center;
       padding: 8px 0;
+
+      @media (orientation: portrait) {
+        span {
+          font-size: 12px;
+        }
+      }
     }
   }
 
@@ -45,6 +67,14 @@
     flex-direction: column;
     padding: 1rem 0 0.5rem 0;
     gap: 1rem;
+
+    @media (orientation: portrait) {
+      width: 50%;
+      display: flex;
+      flex-direction: column;
+      padding: 0.5rem 0 0.5rem 1rem;
+      gap: 1rem;
+    }
 
     &__timeline {
       height: 6px;

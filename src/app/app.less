@@ -6,14 +6,52 @@
   gap: 8px;
 
   &__side-menu {
-    min-width: 15%;
+    min-width: auto;
+    transition: min-width 0.5s ease;
+
+    &__logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: auto;
+
+      p-avatar {
+        min-width: 32px;
+        min-height: 32px;
+        box-shadow: unset;
+      }
+
+      span {
+        color: var(--p-panelmenu-item-color);
+        transition: all 0.8s ease;
+      }
+
+      &:hover {
+        cursor: pointer;
+
+        p-avatar {
+          box-shadow: 0 0 6px var(--p-button-outlined-warn-color);
+          transition: all 0.8s ease;
+        }
+
+        span {
+          color: var(--p-button-outlined-warn-color);
+          transition: all 0.8s ease;
+        }
+      }
+    }
 
     &__main, &__user {
+      .p-panelmenu-panel {
+        border: unset;
+      }
+
       &__item {
         margin: auto 8px;
         display: flex;
         gap: 8px;
         cursor: pointer;
+        min-height: 24px;
 
         &__icon {
           margin: auto 0;
@@ -31,11 +69,16 @@
   }
 
   &__container {
+    min-width: 85%;
     width: 100%;
     height: calc(82vh - 16px);
     display: flex;
     flex-direction: column;
     gap: 8px;
+
+    @media (orientation: portrait) {
+      min-width: unset;
+    }
 
     &__header {
       width: 100%;
@@ -86,5 +129,13 @@
 
   &__panel {
     width: 100%;
+  }
+}
+
+::ng-deep {
+  .toast {
+    @media (orientation: portrait) {
+      width: 80%;
+    }
   }
 }
