@@ -30,6 +30,12 @@
               "src/styles.less",
               "node_modules/tailwindcss/index.css"
             ],
+            "allowedCommonJsDependencies": [
+              "music-metadata",
+              "debug",
+              "ieee754",
+              "content-type"
+            ],
             "server": "src/main.server.ts",
             "outputMode": "server",
             "ssr": {
@@ -41,8 +47,8 @@
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "500kB",
-                  "maximumError": "1MB"
+                  "maximumWarning": "700kB",
+                  "maximumError": "1.2MB"
                 },
                 {
                   "type": "anyComponentStyle",

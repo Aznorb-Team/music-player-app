@@ -7,6 +7,13 @@ export interface ITrack {
   coverUrl: string;
   source?: string;
   lyrics?: string;
+  genres?: string[];
+  localPath?: string;
+}
+
+export enum ELibrarySource {
+  BUILTIN = 'builtin',
+  LOCAL = 'local',
 }
 
 export enum ERepeatMode {

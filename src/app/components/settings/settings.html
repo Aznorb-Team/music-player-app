@@ -51,6 +51,59 @@
           />
         </div>
 
+        <div class="settings-item settings-item--column">
+          <div class="settings-item__info">
+            <p class="settings-item__title">Локальная папка</p>
+            <p class="settings-item__description">
+              {{ libraryDescription() }}
+            </p>
+          </div>
+          <div class="settings-item__actions">
+            @if (!localLibrary.isSupported()) {
+              <p class="settings-item__hint">
+                File System Access API не поддерживается в этом браузере
+              </p>
+            } @else if (localLibrary.isActive()) {
+              <p-button
+                label="Обновить"
+                severity="secondary"
+                [outlined]="true"
+                [loading]="localLibrary.status() === libraryStatus.LOADING"
+                (onClick)="rescanMusicFolder()"
+              />
+              <p-button
+                label="Отключить"
+                severity="secondary"
+                [text]="true"
+                (onClick)="disconnectMusicFolder()"
+              />
+            } @else if (localLibrary.folderName()) {
+              <p-button
+                label="Подключить снова"
+                severity="warn"
+                [outlined]="true"
+                [loading]="localLibrary.status() === libraryStatus.LOADING"
+                (onClick)="reconnectMusicFolder()"
+              />
+              <p-button
+                label="Выбрать другую"
+                severity="secondary"
+                [text]="true"
+                (onClick)="pickMusicFolder()"
+              />
+            } @else {
+              <p-button
+                label="Выбрать папку"
+                icon="pi pi-folder-open"
+                severity="warn"
+                [outlined]="true"
+                [loading]="localLibrary.status() === libraryStatus.LOADING"
+                (onClick)="pickMusicFolder()"
+              />
+            }
+          </div>
+        </div>
+
         <div class="settings-item">
           <div class="settings-item__info">
             <p class="settings-item__title">Случайный порядок</p>

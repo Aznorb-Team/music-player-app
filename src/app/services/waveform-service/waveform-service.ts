@@ -1,5 +1,10 @@
 import { inject, Injectable, PLATFORM_ID, signal } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
+import {
+  isLocalLibrarySrc,
+  LocalLibraryService,
+  trackIdFromLocalLibrarySrc,
+} from '../local-library-service/local-library-service';
 
 const DEFAULT_BAR_COUNT = 120;
 
@@ -8,6 +13,7 @@ const DEFAULT_BAR_COUNT = 120;
 })
 export class WaveformService {
   private readonly _platformId = inject(PLATFORM_ID);
+  private readonly _localLibrary = inject(LocalLibraryService);
   private readonly _cache = new Map<string, number[]>();
   private _audioContext: AudioContext | null = null;
   private _decodeEnabled = false;
@@ -60,13 +66,11 @@ export class WaveformService {
   }
 
   private async _decodePeaks(src: string, barCount: number): Promise<number[]> {
-    const response = await fetch(src);
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch audio: ${src}`);
-    }
-
-    const buffer = await response.arrayBuffer();
+    const buffer = isLocalLibrarySrc(src)
+      ? await (
+          await this._localLibrary.getAudioBlob(trackIdFromLocalLibrarySrc(src))
+        ).arrayBuffer()
+      : await this._fetchAudioBuffer(src);
     const context = this._getAudioContext();
     const audioBuffer = await context.decodeAudioData(buffer.slice(0));
     const channel = audioBuffer.getChannelData(0);
@@ -88,6 +92,16 @@ export class WaveformService {
     const maxPeak = Math.max(...peaks, 0.001);
 
     return peaks.map((peak) => peak / maxPeak);
+  }
+
+  private async _fetchAudioBuffer(src: string): Promise<ArrayBuffer> {
+    const response = await fetch(src);
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch audio: ${src}`);
+    }
+
+    return response.arrayBuffer();
   }
 
   private _getAudioContext(): AudioContext {

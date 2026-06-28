@@ -8,7 +8,7 @@
             <span class="section-header__title">Артисты</span>
           </div>
           <p-select
-            [options]="genreOptions"
+            [options]="genreOptions()"
             [ngModel]="selectedGenreId()"
             (ngModelChange)="onGenreChange($event)"
             class="section-header__filter"

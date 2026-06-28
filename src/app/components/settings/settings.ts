@@ -6,6 +6,8 @@ import { Button } from 'primeng/button';
 import { FormsModule } from '@angular/forms';
 import { MusicPlayerService } from '../../services/music-player-service/music-player-service';
 import { AppSettingsService } from '../../services/app-settings-service/app-settings-service';
+import { LocalLibraryService } from '../../services/local-library-service/local-library-service';
+import { ELocalLibraryStatus } from '../../services/local-library-service/local-library-service.schema';
 import { ERepeatMode } from '../../services/music-player-service/music-player-service.schema';
 import {
   CROSSFADE_DURATION_MAX_SEC,
@@ -29,6 +31,7 @@ import {
 export class SettingsComponent {
   protected readonly musicPlayerService = inject(MusicPlayerService);
   protected readonly appSettings = inject(AppSettingsService);
+  protected readonly localLibrary = inject(LocalLibraryService);
   protected readonly favoritesService = inject(FavoritesService);
   protected readonly authService = inject(AuthService);
   private readonly _notificationService = inject(NotificationService);
@@ -36,6 +39,7 @@ export class SettingsComponent {
   protected readonly repeatMode = ERepeatMode;
   protected readonly crossfadeMinSec = CROSSFADE_DURATION_MIN_SEC;
   protected readonly crossfadeMaxSec = CROSSFADE_DURATION_MAX_SEC;
+  protected readonly libraryStatus = ELocalLibraryStatus;
 
   constructor() {
     this.favoritesService.ensureLoaded();
@@ -72,7 +76,44 @@ export class SettingsComponent {
     this.musicPlayerService.setCrossfadeDurationSec(seconds);
   }
 
-  protected clearLocalData(): void {
+  protected async pickMusicFolder(): Promise<void> {
+    await this.localLibrary.pickFolder();
+  }
+
+  protected async reconnectMusicFolder(): Promise<void> {
+    await this.localLibrary.reconnectFolder();
+  }
+
+  protected async rescanMusicFolder(): Promise<void> {
+    await this.localLibrary.rescanFolder();
+  }
+
+  protected async disconnectMusicFolder(): Promise<void> {
+    await this.localLibrary.disconnect();
+  }
+
+  protected libraryDescription(): string {
+    if (!this.localLibrary.isSupported()) {
+      return 'Доступно в Chrome и Edge на компьютере';
+    }
+
+    if (this.localLibrary.isActive()) {
+      const folder = this.localLibrary.folderName();
+      const count = this.localLibrary.trackCount();
+      return folder ? `«${folder}» · ${count} треков` : `${count} треков`;
+    }
+
+    const folder = this.localLibrary.folderName();
+
+    if (folder) {
+      return `«${folder}» · требуется повторное подключение`;
+    }
+
+    return 'Воспроизведение MP3 и других форматов с вашего компьютера';
+  }
+
+  protected async clearLocalData(): Promise<void> {
+    await this.localLibrary.disconnect();
     this.appSettings.clearLocalData();
     this.favoritesService.reloadFromCache();
     this.authService.clearSession();

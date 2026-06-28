@@ -15,10 +15,7 @@ import { FormsModule } from '@angular/forms';
 import { MusicPlayerService } from '../../services/music-player-service/music-player-service';
 import { ContentService } from '../../services/content-service/content-service';
 import { SearchFilterService } from '../../services/search-filter-service/search-filter-service';
-import {
-  ARTIST_GENRE_MAP,
-  GENRE_ITEMS,
-} from '../genres/genres.const';
+import { buildGenreCatalog, getTrackGenreIds } from '../genres/genres.util';
 import { ImageFallbackDirective } from '../../core/directives/image-fallback.directive';
 import { TrackCardsGridComponent } from '../track-cards-grid/track-cards-grid';
 import { APP_ROUTE_PATHS } from '../../app.routes.const';
@@ -63,10 +60,12 @@ export class ArtistsComponent implements OnInit {
     }
   }
 
-  protected readonly genreOptions = GENRE_ITEMS.map((genre) => ({
-    label: genre.name,
-    value: genre.id,
-  }));
+  protected readonly genreOptions = computed(() =>
+    buildGenreCatalog(this._musicPlayerService.playlist()).map((genre) => ({
+      label: genre.name,
+      value: genre.id,
+    })),
+  );
 
   protected readonly artists = computed(() => {
     const map = new Map<string, IArtistSummary>();
@@ -90,7 +89,13 @@ export class ArtistsComponent implements OnInit {
 
     if (genreId) {
       result = result.filter((artist) =>
-        ARTIST_GENRE_MAP[artist.name]?.includes(genreId),
+        this._musicPlayerService
+          .playlist()
+          .some(
+            (track) =>
+              track.artist === artist.name &&
+              getTrackGenreIds(track).includes(genreId),
+          ),
       );
     }
 

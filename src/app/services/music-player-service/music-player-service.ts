@@ -17,7 +17,7 @@ import {
 import { ECacheItemName } from '../../app.consts';
 
 import { DEFAULT_PLAYLIST } from './music-player-service.const';
-import { ARTIST_GENRE_MAP } from '../../components/genres/genres.const';
+import { getTrackGenreIds } from '../../components/genres/genres.util';
 import {
   CROSSFADE_DURATION_DEFAULT_SEC,
   CROSSFADE_DURATION_MAX_SEC,
@@ -28,10 +28,15 @@ import {
   POSITION_SAVE_INTERVAL_MS,
 } from './music-player-playback.const';
 
-import { ERepeatMode, EQueueContext, ITrack, QUEUE_CONTEXT_LABELS } from './music-player-service.schema';
+import { ERepeatMode, EQueueContext, ELibrarySource, ITrack, QUEUE_CONTEXT_LABELS } from './music-player-service.schema';
 import { SearchFilterService } from '../search-filter-service/search-filter-service';
 import { NotificationService } from '../notification-service/notification-service';
 import { WaveformService } from '../waveform-service/waveform-service';
+import {
+  isLocalLibrarySrc,
+  LocalLibraryService,
+  trackIdFromLocalLibrarySrc,
+} from '../local-library-service/local-library-service';
 import {
   ESeverityNotification,
   ESummaryNotification,
@@ -55,6 +60,7 @@ export class MusicPlayerService {
   private readonly _searchFilter = inject(SearchFilterService);
   private readonly _notificationService = inject(NotificationService);
   private readonly _waveformService = inject(WaveformService);
+  private readonly _localLibraryService = inject(LocalLibraryService);
   private readonly _platformId = inject(PLATFORM_ID);
 
 
@@ -76,6 +82,8 @@ export class MusicPlayerService {
   readonly isDragging = signal(false);
 
   readonly isTrackLoading = signal(false);
+
+  readonly librarySource = signal<ELibrarySource>(ELibrarySource.BUILTIN);
 
   readonly shuffle = signal(false);
 
@@ -169,7 +177,17 @@ export class MusicPlayerService {
     this._loadVolumeFromCache();
     this._loadPlaybackPreferences();
     this._loadPositionsFromCache();
-    void this._restoreLastPlayback();
+    void this._initLibraryAndPlayback();
+  }
+
+
+
+  private async _initLibraryAndPlayback(): Promise<void> {
+    await this._localLibraryService.tryRestoreFromCache();
+
+    if (this.librarySource() === ELibrarySource.BUILTIN) {
+      await this._restoreLastPlayback();
+    }
   }
 
 
@@ -421,6 +439,18 @@ export class MusicPlayerService {
 
 
 
+  public applyLocalPlaylist(tracks: ITrack[]): void {
+    if (!tracks.length) {
+      return;
+    }
+
+    this._replacePlaylist(tracks, ELibrarySource.LOCAL);
+  }
+
+  public restoreBuiltinPlaylist(): void {
+    this._replacePlaylist([...DEFAULT_PLAYLIST], ELibrarySource.BUILTIN);
+  }
+
   public playTrack(track: ITrack): void {
     this.playTrackInContext(track, this.playlist(), EQueueContext.FULL);
   }
@@ -465,7 +495,7 @@ export class MusicPlayerService {
 
   public playByGenre(genreId: string): void {
     const genreTracks = this.playlist().filter((item) =>
-      ARTIST_GENRE_MAP[item.artist]?.includes(genreId),
+      getTrackGenreIds(item).includes(genreId),
     );
     const track = genreTracks[0];
 
@@ -580,6 +610,27 @@ export class MusicPlayerService {
   }
 
 
+
+  private _replacePlaylist(tracks: ITrack[], source: ELibrarySource): void {
+    this._cancelCrossfade();
+    this._clearPendingSeek();
+    this._playWhenReady = false;
+    this.isPlaying.set(false);
+    this.isTrackLoading.set(false);
+
+    this.playlist.set(tracks);
+    this.librarySource.set(source);
+    this.currentIndex.set(0);
+    this.currentTrack.set(tracks[0]);
+    this.currentTime.set(0);
+    this.duration.set(0);
+    this.queueContext.set(EQueueContext.FULL);
+    this.queuePosition.set(0);
+    this._playOrder.set(this._buildSequentialOrder(tracks.length));
+    this._queueContextTracks.set([...tracks]);
+    this._updateMediaSessionMetadata();
+    this._selectTrack(0, false, true, false, false);
+  }
 
   private _selectTrack(
 
@@ -812,13 +863,11 @@ export class MusicPlayerService {
     src: string,
     token: number,
   ): Promise<void> {
-    const response = await fetch(src);
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch audio: ${src}`);
-    }
-
-    const blob = await response.blob();
+    const blob = isLocalLibrarySrc(src)
+      ? await this._localLibraryService.getAudioBlob(
+          trackIdFromLocalLibrarySrc(src),
+        )
+      : await this._fetchAudioBlob(src);
 
     if (token !== this._loadToken) {
       return;
@@ -829,6 +878,16 @@ export class MusicPlayerService {
     this._blobUrls[slot] = objectUrl;
     audio.src = objectUrl;
     audio.load();
+  }
+
+  private async _fetchAudioBlob(src: string): Promise<Blob> {
+    const response = await fetch(src);
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch audio: ${src}`);
+    }
+
+    return response.blob();
   }
 
   private _revokeBlobUrl(slot: 0 | 1): void {

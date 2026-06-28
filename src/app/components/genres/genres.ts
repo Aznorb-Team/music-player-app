@@ -8,8 +8,7 @@ import {
 import { Router } from '@angular/router';
 import { Card } from 'primeng/card';
 import { Button } from 'primeng/button';
-import { GENRE_ITEMS } from './genres.const';
-import { enrichGenresWithTrackCount, getTracksByGenreId } from './genres.util';
+import { enrichGenresWithTrackCount, getTracksByGenreId, buildGenreCatalog } from './genres.util';
 import { SearchFilterService } from '../../services/search-filter-service/search-filter-service';
 import { MusicPlayerService } from '../../services/music-player-service/music-player-service';
 import { APP_ROUTE_PATHS } from '../../app.routes.const';
@@ -33,7 +32,7 @@ export class GenresComponent {
 
   protected readonly genres = computed(() => {
     const tracks = this._musicPlayer.playlist();
-    let items = enrichGenresWithTrackCount(GENRE_ITEMS, tracks);
+    let items = enrichGenresWithTrackCount(buildGenreCatalog(tracks), tracks);
 
     if (this._searchFilter.hasActiveSearch()) {
       items = items.filter((genre) =>
@@ -55,7 +54,11 @@ export class GenresComponent {
 
   protected readonly selectedGenreName = computed(() => {
     const genreId = this.selectedGenreId();
-    return GENRE_ITEMS.find((genre) => genre.id === genreId)?.name ?? '';
+    return (
+      buildGenreCatalog(this._musicPlayer.playlist()).find(
+        (genre) => genre.id === genreId,
+      )?.name ?? ''
+    );
   });
 
   protected readonly selectedGenreSectionTitle = computed(() => {
