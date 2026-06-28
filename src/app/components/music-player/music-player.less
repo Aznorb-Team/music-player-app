@@ -25,7 +25,7 @@
   align-items: center;
   flex-direction: row;
   gap: 1.5rem;
-  padding: 0 3rem;
+  padding: 14px 3rem;
   overflow: hidden;
 
   audio {
@@ -34,7 +34,7 @@
 
   @media (orientation: portrait) {
     gap: 0.75rem;
-    padding: 0 0.75rem;
+    padding: 8px 0.75rem;
   }
 
   &__info {
@@ -45,7 +45,7 @@
     flex: 0 1 280px;
     min-width: 0;
     max-width: 280px;
-    overflow: hidden;
+    overflow: visible;
 
     @media (orientation: portrait) {
       gap: 0.5rem;
@@ -53,25 +53,29 @@
       max-width: 140px;
     }
 
-    &__avatar {
+    &__avatar-wrap {
       flex-shrink: 0;
-      transition: all 0.5s ease;
-
-      @media (orientation: portrait) {
-        width: 32px;
-        height: 32px;
-      }
-
-      ::ng-deep {
-        img {
-          object-fit: cover !important;
-        }
-      }
+      display: inline-flex;
+      border-radius: 50%;
+      cursor: pointer;
+      line-height: 0;
+      transition: box-shadow 0.35s ease;
 
       &:hover {
         box-shadow: 0 5px 15px var(--p-button-outlined-warn-color);
-        cursor: pointer;
-        transition: all 0.5s ease;
+      }
+
+      @media (orientation: portrait) {
+        ::ng-deep .p-avatar {
+          width: 32px;
+          height: 32px;
+        }
+      }
+    }
+
+    &__avatar {
+      ::ng-deep img {
+        object-fit: cover !important;
       }
     }
 

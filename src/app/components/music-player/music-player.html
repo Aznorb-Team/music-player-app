@@ -3,13 +3,17 @@
   <audio #audioPrimary preload="auto"></audio>
   <audio #audioSecondary preload="auto"></audio>
   <div class="container__info">
-    <p-avatar
-      class="container__info__avatar"
-      size="xlarge"
-      shape="circle"
-      [image]="playerService.currentTrack().coverUrl"
+    <div
+      class="container__info__avatar-wrap"
       (click)="miniCard.toggle($event)"
-    />
+    >
+      <p-avatar
+        class="container__info__avatar"
+        size="xlarge"
+        shape="circle"
+        [image]="playerService.currentTrack().coverUrl"
+      />
+    </div>
     <p-popover #miniCard>
       <mini-card></mini-card>
     </p-popover>

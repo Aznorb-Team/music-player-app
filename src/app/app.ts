@@ -19,7 +19,6 @@ import {
 } from '@angular/router';
 import { PanelModule } from 'primeng/panel';
 import { MenuItem } from 'primeng/api';
-import { PanelMenu } from 'primeng/panelmenu';
 import { BadgeModule } from 'primeng/badge';
 import { Ripple } from 'primeng/ripple';
 import {
@@ -52,7 +51,6 @@ import { ProgressSpinner } from 'primeng/progressspinner';
 @Component({
   selector: 'app-root',
   imports: [
-    PanelMenu,
     BadgeModule,
     Ripple,
     CommonModule,

@@ -12,84 +12,73 @@
       </div>
     </ng-template>
     <div class="main-application-panel__side-menu__scroll">
-      <p-panel-menu
-        [model]="itemsMain()"
+      <nav
         class="main-application-panel__side-menu__main"
+        aria-label="Основное меню"
       >
-      <ng-template #item let-item>
-        <a
-          pRipple
-          class="main-application-panel__side-menu__main__item"
-          [routerLink]="item.routerLink"
-          routerLinkActive="side-menu-item--active"
-          [routerLinkActiveOptions]="item.routerLinkActiveOptions ?? { exact: false }"
-        >
-          <i
-            [class]="
-              item.icon + ' main-application-panel__side-menu__main__item__icon'
-            "
-          ></i>
-          @if (appSettings.isSidebarExpanded()) {
-            <span class="main-application-panel__side-menu__main__item__span">
-              {{ item.label }}
-            </span>
-
-            @if (item.badge) {
-              <p-badge
-                class="main-application-panel__side-menu__main__item__badge"
-                [value]="item.badge"
-              />
-            }
-
-            @if (item.shortcut) {
+        @for (item of itemsMain(); track item.label) {
+          <a
+            pRipple
+            class="main-application-panel__side-menu__main__item"
+            [routerLink]="item.routerLink"
+            routerLinkActive="side-menu-item--active"
+            [routerLinkActiveOptions]="item.routerLinkActiveOptions ?? { exact: false }"
+          >
+            <i
+              [class]="
+                item.icon + ' main-application-panel__side-menu__main__item__icon'
+              "
+            ></i>
+            @if (appSettings.isSidebarExpanded()) {
               <span class="main-application-panel__side-menu__main__item__span">
-                {{ item.shortcut }}
+                {{ item.label }}
               </span>
-            }
-          }
-        </a>
-      </ng-template>
-    </p-panel-menu>
-    <br />
-    <hr />
-    <br />
-    <p-panel-menu
-      [model]="itemsUser()"
-      class="main-application-panel__side-menu__user"
-    >
-      <ng-template #item let-item>
-        <a
-          pRipple
-          class="main-application-panel__side-menu__user__item"
-          [routerLink]="item.routerLink"
-          routerLinkActive="side-menu-item--active"
-          [routerLinkActiveOptions]="item.routerLinkActiveOptions ?? { exact: false }"
-        >
-          <i
-            [class]="
-              item.icon + ' main-application-panel__side-menu__user__item__icon'
-            "
-          ></i>
-          @if (appSettings.isSidebarExpanded()) {
-            <span class="main-application-panel__side-menu__user__item__span">
-              {{ item.label }}
-            </span>
-            @if (item.badge) {
-              <p-badge
-                class="main-application-panel__side-menu__user__item__badge"
-                [value]="item.badge"
-              />
-            }
 
-            @if (item.shortcut) {
-              <span class="main-application-panel__side-menu__user__item__span">
-                {{ item.shortcut }}
-              </span>
+              @if (item.badge) {
+                <p-badge
+                  class="main-application-panel__side-menu__main__item__badge"
+                  [value]="item.badge"
+                />
+              }
             }
-          }
-        </a>
-      </ng-template>
-    </p-panel-menu>
+          </a>
+        }
+      </nav>
+
+      <hr class="main-application-panel__side-menu__divider" />
+
+      <nav
+        class="main-application-panel__side-menu__user"
+        aria-label="Меню пользователя"
+      >
+        @for (item of itemsUser(); track item.label) {
+          <a
+            pRipple
+            class="main-application-panel__side-menu__user__item"
+            [routerLink]="item.routerLink"
+            routerLinkActive="side-menu-item--active"
+            [routerLinkActiveOptions]="item.routerLinkActiveOptions ?? { exact: false }"
+          >
+            <i
+              [class]="
+                item.icon + ' main-application-panel__side-menu__user__item__icon'
+              "
+            ></i>
+            @if (appSettings.isSidebarExpanded()) {
+              <span class="main-application-panel__side-menu__user__item__span">
+                {{ item.label }}
+              </span>
+
+              @if (item.badge) {
+                <p-badge
+                  class="main-application-panel__side-menu__user__item__badge"
+                  [value]="item.badge"
+                />
+              }
+            }
+          </a>
+        }
+      </nav>
     </div>
   </p-panel>
 
