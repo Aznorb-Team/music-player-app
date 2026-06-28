@@ -1,4 +1,4 @@
-import { inject, Injectable, PLATFORM_ID } from '@angular/core';
+import { inject, Injectable, PLATFORM_ID, signal } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 
 const DEFAULT_BAR_COUNT = 120;
@@ -10,12 +10,36 @@ export class WaveformService {
   private readonly _platformId = inject(PLATFORM_ID);
   private readonly _cache = new Map<string, number[]>();
   private _audioContext: AudioContext | null = null;
+  private _decodeEnabled = false;
+
+  readonly decodeReady = signal(false);
+
+  public prepareFromUserGesture(): void {
+    if (!this._isBrowser) {
+      return;
+    }
+
+    if (this._audioContext?.state === 'suspended') {
+      void this._audioContext.resume();
+    }
+
+    if (this._decodeEnabled) {
+      return;
+    }
+
+    this._audioContext = new AudioContext();
+    this._decodeEnabled = true;
+
+    void this._audioContext.resume().then(() => {
+      this.decodeReady.set(true);
+    });
+  }
 
   public async getPeaks(
     src: string,
     barCount = DEFAULT_BAR_COUNT,
   ): Promise<number[]> {
-    if (!this._isBrowser) {
+    if (!this._isBrowser || !this._decodeEnabled) {
       return [];
     }
 
@@ -67,8 +91,8 @@ export class WaveformService {
   }
 
   private _getAudioContext(): AudioContext {
-    if (!this._audioContext) {
-      this._audioContext = new AudioContext();
+    if (!this._audioContext || !this._decodeEnabled) {
+      throw new Error('AudioContext requires a user gesture');
     }
 
     return this._audioContext;

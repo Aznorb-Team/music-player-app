@@ -22,6 +22,7 @@ import {
   CROSSFADE_DURATION_DEFAULT_SEC,
   CROSSFADE_DURATION_MAX_SEC,
   CROSSFADE_DURATION_MIN_SEC,
+  FULL_BUFFER_TOLERANCE_SEC,
   MIN_POSITION_TO_SAVE_SEC,
   POSITION_SAVE_END_THRESHOLD,
   POSITION_SAVE_INTERVAL_MS,
@@ -30,6 +31,7 @@ import {
 import { ERepeatMode, EQueueContext, ITrack, QUEUE_CONTEXT_LABELS } from './music-player-service.schema';
 import { SearchFilterService } from '../search-filter-service/search-filter-service';
 import { NotificationService } from '../notification-service/notification-service';
+import { WaveformService } from '../waveform-service/waveform-service';
 import {
   ESeverityNotification,
   ESummaryNotification,
@@ -52,6 +54,7 @@ export class MusicPlayerService {
   private readonly _cacheService = inject(CacheService);
   private readonly _searchFilter = inject(SearchFilterService);
   private readonly _notificationService = inject(NotificationService);
+  private readonly _waveformService = inject(WaveformService);
   private readonly _platformId = inject(PLATFORM_ID);
 
 
@@ -141,6 +144,8 @@ export class MusicPlayerService {
   private _positionsCache: Record<string, number> = {};
   private _lastPositionSaveAt = 0;
   private _pendingSeekTime: number | null = null;
+  private _playWhenReady = false;
+  private readonly _blobUrls: [string | null, string | null] = [null, null];
 
   public registerAudioElements(
     primary: HTMLAudioElement,
@@ -170,9 +175,16 @@ export class MusicPlayerService {
 
 
   public play(): void {
+    this._notifyUserGesture();
+
     const audio = this._getActiveAudio();
 
     if (!audio || !this._isBrowser) {
+      return;
+    }
+
+    if (this.isTrackLoading()) {
+      this._playWhenReady = true;
       return;
     }
 
@@ -184,6 +196,7 @@ export class MusicPlayerService {
       return;
     }
 
+    this._playWhenReady = false;
     this._cancelCrossfade();
     this._audioElements[this._activeSlot].pause();
     this.isPlaying.set(false);
@@ -194,6 +207,7 @@ export class MusicPlayerService {
 
 
   public togglePlayPause(): void {
+    this._notifyUserGesture();
 
     if (this.isPlaying()) {
 
@@ -210,6 +224,7 @@ export class MusicPlayerService {
 
 
   public next(): void {
+    this._notifyUserGesture();
 
     this._advanceTrack(false);
 
@@ -218,6 +233,8 @@ export class MusicPlayerService {
 
 
   public previous(): void {
+    this._notifyUserGesture();
+
     const audio = this._getActiveAudio();
 
     if (
@@ -264,6 +281,8 @@ export class MusicPlayerService {
 
 
   public reset(): void {
+    this._notifyUserGesture();
+
     const audio = this._getActiveAudio();
 
     if (!audio) {
@@ -277,6 +296,12 @@ export class MusicPlayerService {
   }
 
   public seek(progress: number): void {
+    this._notifyUserGesture();
+
+    if (this.isTrackLoading()) {
+      return;
+    }
+
     const audio = this._getActiveAudio();
 
     if (!audio) {
@@ -297,6 +322,7 @@ export class MusicPlayerService {
 
 
   public startDragging(): void {
+    this._notifyUserGesture();
 
     this.isDragging.set(true);
 
@@ -388,9 +414,9 @@ export class MusicPlayerService {
 
 
   public loadTrack(index: number): void {
+    this._notifyUserGesture();
 
     this._selectTrack(index, false);
-
   }
 
 
@@ -404,6 +430,8 @@ export class MusicPlayerService {
     contextTracks: ITrack[],
     context: EQueueContext,
   ): void {
+    this._notifyUserGesture();
+
     const index = this.playlist().findIndex((item) => item.id === track.id);
 
     if (index === -1) {
@@ -461,6 +489,12 @@ export class MusicPlayerService {
   }
 
   public seekBySeconds(delta: number): void {
+    this._notifyUserGesture();
+
+    if (this.isTrackLoading()) {
+      return;
+    }
+
     const audio = this._getActiveAudio();
 
     if (!audio) {
@@ -495,6 +529,8 @@ export class MusicPlayerService {
 
 
   public playFromQueueOffset(offset: number): void {
+    this._notifyUserGesture();
+
     if (offset === 0) {
       return;
     }
@@ -684,6 +720,12 @@ export class MusicPlayerService {
     this._clearPendingSeek();
     this._beginTrackLoading();
 
+    if (shouldPlay) {
+      this._playWhenReady = true;
+    } else {
+      this._playWhenReady = false;
+    }
+
     const track = this.currentTrack();
     const activeSlot = this._activeSlot;
     const activeAudio = this._audioElements[activeSlot];
@@ -700,11 +742,14 @@ export class MusicPlayerService {
     this.duration.set(0);
     this.currentTime.set(0);
 
-    activeAudio.src = track.src;
-    activeAudio.load();
-
     try {
-      await this._waitForCanPlay(token, activeAudio);
+      await this._assignAudioSource(activeAudio, activeSlot, track.src, token);
+
+      if (token !== this._loadToken) {
+        return;
+      }
+
+      await this._waitForFullLoad(token, activeAudio);
 
       if (token !== this._loadToken) {
         return;
@@ -723,10 +768,11 @@ export class MusicPlayerService {
 
       this._endTrackLoading(token);
 
-      if (!shouldPlay) {
+      if (!this._playWhenReady) {
         return;
       }
 
+      this._playWhenReady = false;
       await this._safePlay(activeAudio);
     } catch {
       this._endTrackLoading(token);
@@ -760,69 +806,145 @@ export class MusicPlayerService {
 
 
 
-  private _waitForCanPlay(
+  private async _assignAudioSource(
+    audio: HTMLAudioElement,
+    slot: 0 | 1,
+    src: string,
+    token: number,
+  ): Promise<void> {
+    const response = await fetch(src);
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch audio: ${src}`);
+    }
+
+    const blob = await response.blob();
+
+    if (token !== this._loadToken) {
+      return;
+    }
+
+    this._revokeBlobUrl(slot);
+    const objectUrl = URL.createObjectURL(blob);
+    this._blobUrls[slot] = objectUrl;
+    audio.src = objectUrl;
+    audio.load();
+  }
+
+  private _revokeBlobUrl(slot: 0 | 1): void {
+    const url = this._blobUrls[slot];
+
+    if (url) {
+      URL.revokeObjectURL(url);
+      this._blobUrls[slot] = null;
+    }
+  }
+
+  private _waitForFullLoad(
     token: number,
     audio: HTMLAudioElement,
   ): Promise<void> {
-
     return new Promise((resolve, reject) => {
-
       if (token !== this._loadToken) {
-
         resolve();
-
         return;
-
       }
 
+      let settled = false;
 
+      const finish = (action: () => void) => {
+        if (settled) {
+          return;
+        }
 
-      if (audio.readyState >= HTMLMediaElement.HAVE_METADATA) {
-
-        resolve();
-
-        return;
-
-      }
-
-
-
-      const onLoadedMetadata = () => {
-
+        settled = true;
         cleanup();
-
-        resolve();
-
+        action();
       };
 
+      const tryResolve = () => {
+        if (token !== this._loadToken) {
+          finish(resolve);
+          return;
+        }
 
-
-      const onError = () => {
-
-        cleanup();
-
-        reject(new Error('Audio load failed'));
-
+        if (this._isTrackReady(audio)) {
+          finish(resolve);
+        }
       };
 
-
+      const onError = () => finish(() => reject(new Error('Audio load failed')));
 
       const cleanup = () => {
-
-        audio.removeEventListener('loadedmetadata', onLoadedMetadata);
-
+        audio.removeEventListener('canplaythrough', tryResolve);
+        audio.removeEventListener('progress', tryResolve);
+        audio.removeEventListener('loadeddata', tryResolve);
+        audio.removeEventListener('loadedmetadata', tryResolve);
         audio.removeEventListener('error', onError);
-
       };
 
-
-
-      audio.addEventListener('loadedmetadata', onLoadedMetadata);
-
+      audio.addEventListener('canplaythrough', tryResolve);
+      audio.addEventListener('progress', tryResolve);
+      audio.addEventListener('loadeddata', tryResolve);
+      audio.addEventListener('loadedmetadata', tryResolve);
       audio.addEventListener('error', onError);
 
+      tryResolve();
     });
+  }
 
+  private _isTrackReady(audio: HTMLMediaElement): boolean {
+    const duration = audio.duration;
+
+    if (!Number.isFinite(duration) || duration <= 0) {
+      return false;
+    }
+
+    if (audio.readyState < HTMLMediaElement.HAVE_METADATA) {
+      return false;
+    }
+
+    return (
+      this._isFullyBuffered(audio) ||
+      this._isFullySeekable(audio) ||
+      audio.readyState >= HTMLMediaElement.HAVE_ENOUGH_DATA
+    );
+  }
+
+  private _isFullySeekable(audio: HTMLMediaElement): boolean {
+    const duration = audio.duration;
+
+    if (!Number.isFinite(duration) || duration <= 0) {
+      return false;
+    }
+
+    const ranges = audio.seekable;
+
+    for (let i = 0; i < ranges.length; i++) {
+      if (ranges.end(i) >= duration - FULL_BUFFER_TOLERANCE_SEC) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  private _isFullyBuffered(audio: HTMLMediaElement): boolean {
+    const duration = audio.duration;
+
+    if (!Number.isFinite(duration) || duration <= 0) {
+      return false;
+    }
+
+    const ranges = audio.buffered;
+
+    for (let i = 0; i < ranges.length; i++) {
+      if (ranges.end(i) >= duration - FULL_BUFFER_TOLERANCE_SEC) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
 
@@ -884,12 +1006,22 @@ export class MusicPlayerService {
 
       if (this._pendingSeekTime !== null) {
         this._tryFlushPendingSeek(audio);
-        return;
+
+        if (
+          this._pendingSeekTime !== null &&
+          Math.abs(audio.currentTime - this._pendingSeekTime) < 0.5
+        ) {
+          this._clearPendingSeek();
+        }
       }
 
       this.currentTime.set(audio.currentTime);
 
-      if (Number.isFinite(audio.duration) && audio.duration > 0) {
+      if (
+        !this.isTrackLoading() &&
+        Number.isFinite(audio.duration) &&
+        audio.duration > 0
+      ) {
         this.duration.set(audio.duration);
       }
 
@@ -902,6 +1034,7 @@ export class MusicPlayerService {
       }
 
       this._tryFlushPendingSeek(audio);
+      this._tryAdvancePendingSeek(audio);
     });
 
     audio.addEventListener('loadeddata', () => {
@@ -910,6 +1043,7 @@ export class MusicPlayerService {
       }
 
       this._tryFlushPendingSeek(audio);
+      this._tryAdvancePendingSeek(audio);
     });
 
     audio.addEventListener('canplay', () => {
@@ -918,6 +1052,7 @@ export class MusicPlayerService {
       }
 
       this._tryFlushPendingSeek(audio);
+      this._tryAdvancePendingSeek(audio);
     });
 
     audio.addEventListener('seeked', () => {
@@ -930,13 +1065,9 @@ export class MusicPlayerService {
 
         if (Math.abs(audio.currentTime - target) < 0.5) {
           this._clearPendingSeek();
-          this.currentTime.set(audio.currentTime);
-          this._persistCurrentPosition();
-        } else if (this._canSeekTo(audio, target)) {
-          audio.currentTime = target;
+        } else {
+          this._tryFlushPendingSeek(audio);
         }
-
-        return;
       }
 
       this.currentTime.set(audio.currentTime);
@@ -944,6 +1075,10 @@ export class MusicPlayerService {
 
     audio.addEventListener('loadedmetadata', () => {
       if (slot !== this._activeSlot) {
+        return;
+      }
+
+      if (this.isTrackLoading()) {
         return;
       }
 
@@ -1270,11 +1405,15 @@ export class MusicPlayerService {
     this.duration.set(0);
 
     incoming.pause();
-    incoming.src = track.src;
-    incoming.load();
 
     try {
-      await this._waitForCanPlay(token, incoming);
+      await this._assignAudioSource(incoming, incomingSlot, track.src, token);
+
+      if (token !== this._loadToken) {
+        return;
+      }
+
+      await this._waitForFullLoad(token, incoming);
 
       if (token !== this._loadToken) {
         return;
@@ -1291,6 +1430,14 @@ export class MusicPlayerService {
       }
 
       this._endTrackLoading(token);
+
+      if (!this._playWhenReady) {
+        incoming.pause();
+        outgoing.pause();
+        this.isPlaying.set(false);
+        this._updateMediaSessionPlaybackState();
+        return;
+      }
 
       this._applyVolumeToSlot(incomingSlot, 0);
       await incoming.play();
@@ -1378,17 +1525,83 @@ export class MusicPlayerService {
     }
 
     const target = Math.min(duration, Math.max(0, time));
-    this.currentTime.set(target);
 
     if (this._canSeekTo(audio, target)) {
       this._clearPendingSeek();
       audio.currentTime = target;
+      this.currentTime.set(target);
       this._persistCurrentPosition();
       return;
     }
 
     this._pendingSeekTime = target;
+
+    const interim = this._bestSeekableTimeToward(audio, target);
+
+    if (interim !== null && this._canSeekTo(audio, interim)) {
+      audio.currentTime = interim;
+      this.currentTime.set(interim);
+    }
+
     this._tryFlushPendingSeek(audio);
+  }
+
+  private _bestSeekableTimeToward(
+    audio: HTMLAudioElement,
+    target: number,
+  ): number | null {
+    const ranges = audio.seekable;
+
+    if (!ranges.length) {
+      return target <= 0.05 ? 0 : null;
+    }
+
+    let bestBefore: number | null = null;
+
+    for (let i = 0; i < ranges.length; i++) {
+      const start = ranges.start(i);
+      const end = ranges.end(i);
+
+      if (target >= start - 0.05 && target <= end + 0.05) {
+        return target;
+      }
+
+      if (end < target - 0.05 && (bestBefore === null || end > bestBefore)) {
+        bestBefore = end;
+      }
+    }
+
+    if (bestBefore !== null) {
+      return bestBefore;
+    }
+
+    const firstStart = ranges.start(0);
+
+    if (target < firstStart) {
+      return firstStart;
+    }
+
+    return ranges.end(ranges.length - 1);
+  }
+
+  private _tryAdvancePendingSeek(audio: HTMLAudioElement): void {
+    if (this._pendingSeekTime === null || this._canSeekTo(audio, this._pendingSeekTime)) {
+      return;
+    }
+
+    const target = this._pendingSeekTime;
+    const interim = this._bestSeekableTimeToward(audio, target);
+
+    if (
+      interim === null ||
+      !this._canSeekTo(audio, interim) ||
+      interim <= audio.currentTime + 0.25
+    ) {
+      return;
+    }
+
+    audio.currentTime = interim;
+    this.currentTime.set(interim);
   }
 
   private _canSeekTo(audio: HTMLAudioElement, time: number): boolean {
@@ -1426,6 +1639,10 @@ export class MusicPlayerService {
 
   private _clearPendingSeek(): void {
     this._pendingSeekTime = null;
+  }
+
+  private _notifyUserGesture(): void {
+    this._waveformService.prepareFromUserGesture();
   }
 
   private _beginTrackLoading(): void {

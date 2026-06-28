@@ -47,6 +47,7 @@
       [rounded]="true"
       severity="warn"
       [outlined]="true"
+      [disabled]="playerService.isTrackLoading() && !playerService.isPlaying()"
       (onClick)="clickOnPlayPause()"
     />
     <p-button

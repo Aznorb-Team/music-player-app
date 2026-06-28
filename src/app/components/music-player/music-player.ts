@@ -60,8 +60,8 @@ export class MusicPlayerComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private _waveformLoadToken = 0;
 
-  protected readonly isTimelineLoading = computed(
-    () => this.playerService.isTrackLoading() || this.waveformLoading(),
+  protected readonly isTimelineLoading = computed(() =>
+    this.playerService.isTrackLoading(),
   );
 
   protected volumeForm = new FormControl<number>(100);
@@ -85,6 +85,7 @@ export class MusicPlayerComponent implements OnInit, AfterViewInit, OnDestroy {
 
     effect(() => {
       const src = this.playerService.currentTrack().src;
+      this._waveformService.decodeReady();
       void this._loadWaveform(src);
     });
   }
@@ -170,6 +171,11 @@ export class MusicPlayerComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private async _loadWaveform(src: string): Promise<void> {
+    if (!this._waveformService.decodeReady()) {
+      this.waveformPeaks.set([]);
+      return;
+    }
+
     const token = ++this._waveformLoadToken;
     this.waveformPeaks.set([]);
     this.waveformLoading.set(true);
