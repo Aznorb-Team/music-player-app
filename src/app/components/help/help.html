@@ -1,0 +1,21 @@
+<div class="page-scroll">
+  <div class="page-container">
+    <p-card>
+      <ng-template #header>
+        <div class="section-header">
+          <i class="pi pi-question-circle section-header__icon"></i>
+          <span class="section-header__title">Помощь</span>
+        </div>
+      </ng-template>
+
+      <div class="help-list">
+        @for (item of helpItems; track item.question) {
+          <div class="help-item">
+            <p class="help-item__question">{{ item.question }}</p>
+            <p class="help-item__answer">{{ item.answer }}</p>
+          </div>
+        }
+      </div>
+    </p-card>
+  </div>
+</div>

@@ -1,0 +1,52 @@
+<div class="page-scroll">
+  <div class="page-container">
+    <p-card>
+      <ng-template #header>
+        <div class="section-header">
+          <i class="pi pi-headphones section-header__icon"></i>
+          <span class="section-header__title">Альбомы</span>
+        </div>
+      </ng-template>
+
+      @if (albums().length) {
+        <div class="catalog-grid">
+          @for (album of albums(); track album.name + album.artist) {
+            <div class="catalog-card">
+              <div class="catalog-card__image-wrapper">
+                <img
+                  [src]="album.coverUrl"
+                  [alt]="album.name"
+                  class="catalog-card__image"
+                  (error)="onImageError($event)"
+                />
+              </div>
+              <div class="catalog-card__content">
+                <h3 class="catalog-card__title">{{ album.name }}</h3>
+                <p class="catalog-card__meta">{{ album.artist }}</p>
+                <p class="catalog-card__meta">
+                  {{ album.trackCount }}
+                  {{ album.trackCount === 1 ? 'трек' : 'трека' }}
+                </p>
+                <div class="catalog-card__footer">
+                  <p-button
+                    icon="pi pi-play"
+                    severity="warn"
+                    [outlined]="true"
+                    [rounded]="true"
+                    size="small"
+                    (onClick)="playAlbum(album)"
+                  />
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      } @else {
+        <div class="page-empty">
+          <i class="pi pi-search page-empty__icon"></i>
+          <p>Альбомы по заданным фильтрам не найдены</p>
+        </div>
+      }
+    </p-card>
+  </div>
+</div>

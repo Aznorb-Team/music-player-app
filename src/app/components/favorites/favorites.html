@@ -1,0 +1,67 @@
+<div class="page-scroll">
+  <div class="page-container">
+    <p-card>
+      <ng-template #header>
+        <div class="section-header">
+          <i class="pi pi-heart section-header__icon"></i>
+          <span class="section-header__title">Избранные</span>
+        </div>
+      </ng-template>
+
+      @if (favoritesService.favoriteTracks().length) {
+        <p class="favorites-section__meta">
+          {{ favoritesService.favoritesCount() }} треков
+        </p>
+
+        <div class="track-list">
+          @for (track of favoritesService.favoriteTracks(); track track.id) {
+            <div
+              class="track-row"
+              [class.track-row--active]="isCurrentTrack(track)"
+            >
+              <img
+                [src]="track.coverUrl"
+                [alt]="track.title"
+                class="track-row__cover"
+                (error)="onImageError($event)"
+              />
+              <div class="track-row__info">
+                <p class="track-row__title">{{ track.title }}</p>
+                <p class="track-row__artist">
+                  {{ track.artist }}
+                  @if (track.album) {
+                    · {{ track.album }}
+                  }
+                </p>
+              </div>
+              <p-button
+                [icon]="trackButtonIcon(track)"
+                severity="warn"
+                [outlined]="true"
+                [rounded]="true"
+                size="small"
+                (onClick)="toggleTrack(track)"
+              />
+              <p-button
+                icon="pi pi-heart-fill"
+                severity="warn"
+                [rounded]="true"
+                size="small"
+                (onClick)="removeFavorite(track)"
+                aria-label="Удалить из избранного"
+              />
+            </div>
+          }
+        </div>
+      } @else {
+        <div class="page-empty">
+          <i class="pi pi-heart page-empty__icon"></i>
+          <p>
+            Добавляйте треки в избранное кнопкой
+            <i class="pi pi-heart"></i> в плеере. Список сохраняется в браузере.
+          </p>
+        </div>
+      }
+    </p-card>
+  </div>
+</div>

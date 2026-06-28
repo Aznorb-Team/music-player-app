@@ -1,0 +1,28 @@
+@import '../../styles/page-layout.less';
+
+.playlists-section {
+  padding: 0 8px 8px;
+
+  &__name {
+    margin: 0 0 4px;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  &__meta {
+    margin: 0 0 12px;
+    font-size: 0.8125rem;
+    color: var(--p-text-muted-color);
+  }
+}
+
+.track-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.track-row--active {
+  background: var(--p-content-hover-background);
+  border-color: var(--p-button-outlined-warn-color);
+}

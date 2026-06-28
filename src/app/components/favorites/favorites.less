@@ -1,0 +1,21 @@
+@import '../../styles/page-layout.less';
+
+.favorites-section {
+  &__meta {
+    margin: 0 0 12px;
+    padding: 0 8px;
+    font-size: 0.8125rem;
+    color: var(--p-text-muted-color);
+  }
+}
+
+.track-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.track-row--active {
+  background: var(--p-content-hover-background);
+  border-color: var(--p-button-outlined-warn-color);
+}

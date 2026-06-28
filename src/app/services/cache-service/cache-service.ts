@@ -11,9 +11,9 @@ import {
   ESummuryNotification,
 } from '../notification-service/notification-service.const';
 
-Injectable({
+@Injectable({
   providedIn: 'root',
-});
+})
 export class CacheService {
   private readonly _window = inject(WINDOW);
   private readonly _notificationService = inject(NotificationService);

@@ -1,0 +1,76 @@
+<div class="page-scroll">
+  <div class="page-container">
+    <p-card>
+      <ng-template #header>
+        <div class="section-header">
+          <i class="pi pi-list section-header__icon"></i>
+          <span class="section-header__title">Плейлисты</span>
+        </div>
+      </ng-template>
+
+      <div class="playlists-section">
+        <h3 class="playlists-section__name">Основной плейлист</h3>
+        <p class="playlists-section__meta">{{ playlist().length }} треков</p>
+
+        @if (playlist().length) {
+        <div class="track-list">
+          @for (track of playlist(); track track.id) {
+            <div
+              class="track-row"
+              [class.track-row--active]="isCurrentTrack(track)"
+            >
+              <img
+                [src]="track.coverUrl"
+                [alt]="track.title"
+                class="track-row__cover"
+                (error)="onImageError($event)"
+              />
+              <div class="track-row__info">
+                <p class="track-row__title">{{ track.title }}</p>
+                <p class="track-row__artist">
+                  {{ track.artist }}
+                  @if (track.album) {
+                    · {{ track.album }}
+                  }
+                </p>
+              </div>
+              <p-button
+                [icon]="trackButtonIcon(track)"
+                severity="warn"
+                [outlined]="true"
+                [rounded]="true"
+                size="small"
+                [attr.aria-label]="
+                  isCurrentTrack(track) && isPlaying()
+                    ? 'Пауза'
+                    : 'Воспроизвести'
+                "
+                (onClick)="toggleTrack(track)"
+              />
+              <p-button
+                [icon]="isFavorite(track) ? 'pi pi-heart-fill' : 'pi pi-heart'"
+                severity="warn"
+                [text]="!isFavorite(track)"
+                [outlined]="isFavorite(track)"
+                [rounded]="true"
+                size="small"
+                (onClick)="toggleFavorite(track)"
+                [attr.aria-label]="
+                  isFavorite(track)
+                    ? 'Удалить из избранного'
+                    : 'Добавить в избранное'
+                "
+              />
+            </div>
+          }
+        </div>
+        } @else {
+          <div class="page-empty">
+            <i class="pi pi-search page-empty__icon"></i>
+            <p>Треки по заданным фильтрам не найдены</p>
+          </div>
+        }
+      </div>
+    </p-card>
+  </div>
+</div>

@@ -1,0 +1,34 @@
+.news-detail-card {
+  width: 25rem;
+  overflow: hidden;
+
+  @media (orientation: portrait) {
+    width: 100%;
+  }
+
+  ::ng-deep .p-card-header {
+    position: relative;
+    padding: 0;
+  }
+
+  &__image {
+    width: 100%;
+    display: block;
+    object-fit: cover;
+    max-height: 200px;
+  }
+
+  &__category-tag {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+  }
+
+  &__text {
+    margin: 0;
+    white-space: pre-line;
+    line-height: 1.5;
+    font-size: 0.875rem;
+    color: var(--p-text-color);
+  }
+}

@@ -7,7 +7,7 @@ import {
   OnInit,
   signal,
 } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { PanelModule } from 'primeng/panel';
 import { MenuItem } from 'primeng/api';
 import { PanelMenu } from 'primeng/panelmenu';
@@ -28,7 +28,7 @@ import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MusicPlayerComponent } from './components/music-player/music-player';
 import { CacheService } from './services/cache-service/cache-service';
-import { tap, filter } from 'rxjs';
+import { tap, filter, debounceTime, distinctUntilChanged } from 'rxjs';
 import {
   ETypeActionCache,
   ETypeCache,
@@ -41,6 +41,7 @@ import {
   ESummuryNotification,
 } from './services/notification-service/notification-service.const';
 import { Avatar } from 'primeng/avatar';
+import { SearchFilterService } from './services/search-filter-service/search-filter-service';
 
 @Component({
   selector: 'app-root',
@@ -51,6 +52,8 @@ import { Avatar } from 'primeng/avatar';
     CommonModule,
     PanelModule,
     RouterOutlet,
+    RouterLink,
+    RouterLinkActive,
     InputGroup,
     InputText,
     InputGroupAddon,
@@ -69,18 +72,31 @@ export class App implements OnInit {
   private _dr = inject(DestroyRef);
   private _cacheService = inject(CacheService);
   private _notificationService = inject(NotificationService);
+  private _searchFilter = inject(SearchFilterService);
 
   protected readonly title = signal('Music Player');
   protected readonly itemsMain = signal<MenuItem[]>([]);
   protected readonly itemsUser = signal<MenuItem[]>([]);
+  protected readonly searchFilter = this._searchFilter;
   protected isDarkMode = new FormControl<boolean>(false);
   protected isFullSidebarMenu = new FormControl<boolean>(true);
+  protected searchControl = new FormControl('', { nonNullable: true });
 
   public ngOnInit(): void {
     this._initSideMenuConfig();
     this._subscribeOnDarkModeToggle();
     this._subscribeOnSideBarToggle();
+    this._subscribeOnSearch();
     this._loadStartDate();
+  }
+
+  protected submitSearch(): void {
+    this._searchFilter.setSearchQuery(this.searchControl.value);
+  }
+
+  protected clearSearch(): void {
+    this.searchControl.setValue('');
+    this._searchFilter.clearSearch();
   }
 
   protected toggleFullSidebarMenu(): void {
@@ -177,6 +193,18 @@ export class App implements OnInit {
           ETypeCache.LOCAL,
           ETypeActionCache.SAVE,
         );
+      });
+  }
+
+  private _subscribeOnSearch(): void {
+    this.searchControl.valueChanges
+      .pipe(
+        debounceTime(300),
+        distinctUntilChanged(),
+        takeUntilDestroyed(this._dr),
+      )
+      .subscribe((query) => {
+        this._searchFilter.setSearchQuery(query);
       });
   }
 }

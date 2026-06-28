@@ -1,0 +1,36 @@
+<div class="page-scroll">
+  <div class="page-container">
+    <p-card>
+      <ng-template #header>
+        <div class="section-header">
+          <i class="pi pi-clone section-header__icon"></i>
+          <span class="section-header__title">Жанры</span>
+        </div>
+      </ng-template>
+
+      @if (genres().length) {
+        <div class="catalog-grid">
+          @for (genre of genres(); track genre.id) {
+            <div class="catalog-card">
+              <div class="catalog-card__image-wrapper">
+                <div class="catalog-card__icon-wrapper">
+                  <i [class]="genre.icon"></i>
+                </div>
+              </div>
+              <div class="catalog-card__content">
+                <h3 class="catalog-card__title">{{ genre.name }}</h3>
+                <p class="catalog-card__meta">{{ genre.description }}</p>
+                <p class="catalog-card__meta">~{{ genre.trackCount }} треков</p>
+              </div>
+            </div>
+          }
+        </div>
+      } @else {
+        <div class="page-empty">
+          <i class="pi pi-search page-empty__icon"></i>
+          <p>Жанры по заданным фильтрам не найдены</p>
+        </div>
+      }
+    </p-card>
+  </div>
+</div>

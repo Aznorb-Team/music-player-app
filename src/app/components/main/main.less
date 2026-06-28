@@ -1,0 +1,331 @@
+:host {
+  display: block;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.main-scroll {
+  height: 100%;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: var(--p-button-outlined-warn-color) transparent;
+
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: var(--p-button-outlined-warn-color);
+    border-radius: 4px;
+  }
+}
+
+.main-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 4px 8px 24px;
+  box-sizing: border-box;
+
+  p-card {
+    flex-shrink: 0;
+    width: 100%;
+  }
+
+  hr {
+    flex-shrink: 0;
+    color: var(--p-button-text-warn-color);
+    opacity: 0.5;
+    margin: 0;
+    border: none;
+    border-top: 1px solid currentColor;
+  }
+
+  ::ng-deep {
+    .news-carousel {
+      .p-carousel-viewport {
+        overflow: hidden;
+      }
+
+      .p-carousel-item-list {
+        align-items: stretch;
+      }
+
+      .p-carousel-item {
+        display: flex;
+        align-items: stretch;
+      }
+    }
+  }
+}
+
+.news-section,
+.concerts-section {
+  ::ng-deep {
+    .p-card-body {
+      padding: 0 0 12px;
+    }
+  }
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px 0;
+
+  &--with-filter {
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  &__title-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  &__filter {
+    min-width: 160px;
+  }
+
+  &__icon {
+    color: var(--p-button-outlined-warn-color);
+    font-size: 1.25rem;
+  }
+
+  &__title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--p-panelmenu-item-color);
+  }
+}
+
+.news-card {
+  border: 1px solid var(--p-content-border-color);
+  border-radius: var(--p-content-border-radius);
+  margin: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  width: calc(100% - 16px);
+  height: 340px;
+  box-sizing: border-box;
+
+  &__image-wrapper {
+    position: relative;
+    width: 100%;
+    height: 150px;
+    flex-shrink: 0;
+    overflow: hidden;
+    background: var(--p-content-background);
+  }
+
+  &__image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  &__tag {
+    position: absolute;
+  }
+
+  &__content {
+    padding: 12px 14px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  &__meta {
+    font-size: 0.75rem;
+    color: var(--p-text-muted-color);
+    flex-shrink: 0;
+  }
+
+  &__title {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    margin: 0;
+    line-height: 1.3;
+    flex-shrink: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  &__summary {
+    font-size: 0.8125rem;
+    color: var(--p-text-muted-color);
+    margin: 0;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    flex: 1;
+    min-height: 0;
+  }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+}
+
+.concert-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 0 8px;
+  flex-shrink: 0;
+
+  &__icon {
+    color: var(--p-button-outlined-warn-color);
+    font-size: 1.25rem;
+  }
+
+  &__title-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+
+    &__text {
+      margin: 0;
+      font-weight: 600;
+      font-size: 1.125rem;
+    }
+  }
+
+  &__select {
+    min-width: 160px;
+  }
+
+  &__filters {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  &__select__label__span {
+    font-weight: 600;
+  }
+}
+
+.concerts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+  padding: 0 8px 8px;
+}
+
+.concert-card {
+  border: 1px solid var(--p-content-border-color);
+  border-radius: var(--p-content-border-radius);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+
+  &__image-wrapper {
+    position: relative;
+    width: 100%;
+    height: 160px;
+    flex-shrink: 0;
+    overflow: hidden;
+    background: var(--p-content-background);
+  }
+
+  &__image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  &__tag {
+    position: absolute;
+  }
+
+  &__content {
+    padding: 12px 14px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+  }
+
+  &__artist {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0;
+  }
+
+  &__venue,
+  &__date {
+    font-size: 0.8125rem;
+    color: var(--p-text-muted-color);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  &__footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: auto;
+    padding-top: 8px;
+  }
+
+  &__price {
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--p-button-outlined-warn-color);
+  }
+
+  &__actions {
+    display: flex;
+    gap: 6px;
+  }
+}
+
+.concerts-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 32px;
+  color: var(--p-text-muted-color);
+
+  &__icon {
+    font-size: 2rem;
+  }
+
+  p {
+    margin: 0;
+  }
+}

@@ -1,0 +1,45 @@
+<div class="page-scroll">
+  <div class="page-container">
+    <p-card>
+      <ng-template #header>
+        <div class="section-header">
+          <i class="pi pi-cog section-header__icon"></i>
+          <span class="section-header__title">Настройки</span>
+        </div>
+      </ng-template>
+
+      <div class="settings-list">
+        <div class="settings-item">
+          <div class="settings-item__info">
+            <p class="settings-item__title">Тёмная тема</p>
+            <p class="settings-item__description">
+              Переключатель в верхней панели. Выбор сохраняется в localStorage.
+            </p>
+          </div>
+          <i class="pi pi-moon settings-item__icon"></i>
+        </div>
+
+        <div class="settings-item">
+          <div class="settings-item__info">
+            <p class="settings-item__title">Громкость плеера</p>
+            <p class="settings-item__description">
+              Текущее значение: {{ musicPlayerService.volume() }}%
+            </p>
+          </div>
+          <i class="pi pi-volume-up settings-item__icon"></i>
+        </div>
+
+        <div class="settings-item">
+          <div class="settings-item__info">
+            <p class="settings-item__title">Боковое меню</p>
+            <p class="settings-item__description">
+              Состояние свёрнутости сохраняется автоматически при клике на
+              логотип.
+            </p>
+          </div>
+          <i class="pi pi-bars settings-item__icon"></i>
+        </div>
+      </div>
+    </p-card>
+  </div>
+</div>

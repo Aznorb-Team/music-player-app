@@ -11,12 +11,19 @@
         }
       </div>
     </ng-template>
-    <p-panel-menu
-      [model]="itemsMain()"
-      class="main-application-panel__side-menu__main"
-    >
+    <div class="main-application-panel__side-menu__scroll">
+      <p-panel-menu
+        [model]="itemsMain()"
+        class="main-application-panel__side-menu__main"
+      >
       <ng-template #item let-item>
-        <a pRipple class="main-application-panel__side-menu__main__item">
+        <a
+          pRipple
+          class="main-application-panel__side-menu__main__item"
+          [routerLink]="item.routerLink"
+          routerLinkActive="side-menu-item--active"
+          [routerLinkActiveOptions]="item.routerLinkActiveOptions ?? { exact: false }"
+        >
           <i
             [class]="
               item.icon + ' main-application-panel__side-menu__main__item__icon'
@@ -51,7 +58,13 @@
       class="main-application-panel__side-menu__user"
     >
       <ng-template #item let-item>
-        <a pRipple class="main-application-panel__side-menu__user__item">
+        <a
+          pRipple
+          class="main-application-panel__side-menu__user__item"
+          [routerLink]="item.routerLink"
+          routerLinkActive="side-menu-item--active"
+          [routerLinkActiveOptions]="item.routerLinkActiveOptions ?? { exact: false }"
+        >
           <i
             [class]="
               item.icon + ' main-application-panel__side-menu__user__item__icon'
@@ -77,6 +90,7 @@
         </a>
       </ng-template>
     </p-panel-menu>
+    </div>
   </p-panel>
 
   <div class="main-application-panel__container">
@@ -84,13 +98,28 @@
       <p-inputgroup
         class="main-application-panel__container__header__search-field"
       >
-        <input pInputText placeholder="Поиск" />
+        <input
+          pInputText
+          placeholder="Поиск треков, артистов, новостей..."
+          [formControl]="searchControl"
+          (keydown.enter)="submitSearch()"
+        />
         <p-inputgroup-addon>
+          @if (searchFilter.hasActiveSearch()) {
+            <p-button
+              icon="pi pi-times"
+              severity="secondary"
+              variant="text"
+              (onClick)="clearSearch()"
+              aria-label="Очистить поиск"
+            />
+          }
           <p-button
             icon="pi pi-search"
             severity="secondary"
             variant="text"
-            (click)="$event.stopPropagation()"
+            (onClick)="submitSearch()"
+            aria-label="Поиск"
           />
         </p-inputgroup-addon>
       </p-inputgroup>

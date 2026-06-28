@@ -1,0 +1,29 @@
+@if (contentService.selectedNews(); as news) {
+  <p-card class="news-detail-card">
+    <ng-template #header>
+      <img
+        [alt]="news.title"
+        class="news-detail-card__image"
+        [src]="news.imageUrl"
+        (error)="onImageError($event)"
+      />
+      <p-tag
+        [value]="news.category"
+        severity="warn"
+        class="news-detail-card__category-tag"
+      />
+    </ng-template>
+    <ng-template #title>{{ news.title }}</ng-template>
+    <ng-template #subtitle>
+      {{ news.source }} · {{ news.publishedAt | date: 'd MMMM y' }}
+      @if (news.artist) {
+        · {{ news.artist }}
+      }
+    </ng-template>
+    <p-fieldset legend="Полный текст">
+      <p-scrollpanel [style]="{ width: '100%', height: '180px' }">
+        <p class="news-detail-card__text">{{ news.fullText }}</p>
+      </p-scrollpanel>
+    </p-fieldset>
+  </p-card>
+}

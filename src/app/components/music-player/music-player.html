@@ -1,37 +1,48 @@
 <p-toolbar class="container">
-  <audio
-    #audioPlayer
-    [src]="
-      'https://s3.twcstorage.ru/9ef8f19c-17c2739d-638d-4029-b249-cad83a6dc245/Falling%20In%20Reverse%20-%20Drugs.mp3'
-    "
-  ></audio>
+  <audio #audioPlayer preload="metadata"></audio>
   <div class="container__info">
     <p-avatar
       class="container__info__avatar"
       size="xlarge"
       shape="circle"
-      image="https://is1-ssl.mzstatic.com/image/thumb/Video113/v4/00/f9/57/00f95716-b496-9c75-364e-00a2a3654690/0045778240661_USEP61933001.jpg/720x405mv.jpg"
+      [image]="playerService.currentTrack().coverUrl"
       (click)="miniCard.toggle($event)"
     />
     <p-popover #miniCard>
       <mini-card></mini-card>
     </p-popover>
     <div class="container__info__text-container">
-      <span class="container__info__text-container__name">DRUGS</span>
-      <span class="container__info__text-container__author"
-        >Falling In Reverse</span
-      >
+      <span class="container__info__text-container__name">{{
+        playerService.currentTrack().title
+      }}</span>
+      <span class="container__info__text-container__author">{{
+        playerService.currentTrack().artist
+      }}</span>
     </div>
   </div>
   <div class="container__controls-track">
+    <p-button
+      icon="pi pi-sort-alt"
+      [rounded]="true"
+      [text]="!playerService.shuffle()"
+      [outlined]="playerService.shuffle()"
+      severity="warn"
+      class="container__controls-track__shuffle"
+      [class.container__controls-track__shuffle--active]="playerService.shuffle()"
+      (onClick)="playerService.toggleShuffle()"
+      [attr.aria-label]="playerService.shuffle() ? 'Случайный порядок включён' : 'Случайный порядок выключен'"
+    />
     <p-button
       icon="pi pi-step-backward-alt"
       [rounded]="true"
       [text]="true"
       severity="warn"
+      (onClick)="playerService.previous()"
     />
     <p-button
-      icon="{{ isPlay() ? 'pi pi-pause' : 'pi pi-play' }}"
+      [icon]="
+        playerService.isPlaying() ? 'pi pi-pause' : 'pi pi-play'
+      "
       [rounded]="true"
       severity="warn"
       [outlined]="true"
@@ -42,6 +53,20 @@
       [rounded]="true"
       [text]="true"
       severity="warn"
+      (onClick)="playerService.next()"
+    />
+    <p-button
+      [icon]="repeatIcon()"
+      [rounded]="true"
+      [text]="!isRepeatActive()"
+      [outlined]="isRepeatActive()"
+      severity="warn"
+      class="container__controls-track__repeat"
+      [class.container__controls-track__repeat--one]="
+        playerService.repeatMode() === repeatMode.ONE
+      "
+      [attr.aria-label]="repeatTooltip()"
+      (onClick)="playerService.cycleRepeatMode()"
     />
   </div>
   <form class="container__timeline-container">
@@ -54,27 +79,42 @@
       (onSlideEnd)="seekAudio($event.value || 0)"
     />
     <div class="container__timeline-container__time">
-      <span>{{ startTime | time }}</span>
-      <span>{{ endTime | time }}</span>
+      <span>{{ playerService.currentTime() | time }}</span>
+      <span>{{ playerService.duration() | time }}</span>
     </div>
   </form>
   <div class="container__controls-player">
     <p-button
-      icon="pi pi-heart"
+      [icon]="isCurrentTrackFavorite() ? 'pi pi-heart-fill' : 'pi pi-heart'"
+      [rounded]="true"
+      [text]="!isCurrentTrackFavorite()"
+      [outlined]="isCurrentTrackFavorite()"
+      severity="warn"
+      (onClick)="toggleFavorite()"
+      [attr.aria-label]="
+        isCurrentTrackFavorite()
+          ? 'Удалить из избранного'
+          : 'Добавить в избранное'
+      "
+    />
+    <p-button
+      icon="pi pi-list"
       [rounded]="true"
       [text]="true"
       severity="warn"
+      (onClick)="queuePopover.toggle($event)"
+      aria-label="Очередь воспроизведения"
     />
     <p-button
-      icon="pi pi-replay"
+      icon="pi pi-refresh"
       [rounded]="true"
       [text]="true"
       severity="warn"
       (onClick)="onReset()"
+      aria-label="Сначала"
     />
-    <!--    pi-volume-down / pi-volume-off-->
     <p-button
-      (click)="volumePopover.toggle($event)"
+      (onClick)="volumePopover.toggle($event); $event.stopPropagation()"
       icon="pi pi-volume-up"
       [rounded]="true"
       [text]="true"
@@ -82,6 +122,38 @@
     />
   </div>
 </p-toolbar>
+<p-popover #queuePopover>
+  <ng-template #content>
+    <div class="queue-panel">
+      <p class="queue-panel__title">
+        Очередь · {{ playerService.queueContextLabel() }}
+      </p>
+      @if (playerService.queuedTracks().length) {
+        <ul class="queue-panel__list">
+          @for (
+            track of playerService.queuedTracks();
+            track track.id;
+            let i = $index
+          ) {
+            <li class="queue-panel__item">
+              <button
+                type="button"
+                class="queue-panel__button"
+                [class.queue-panel__button--active]="i === 0"
+                (click)="playerService.playFromQueueOffset(i)"
+              >
+                <span class="queue-panel__track">{{ track.title }}</span>
+                <span class="queue-panel__artist">{{ track.artist }}</span>
+              </button>
+            </li>
+          }
+        </ul>
+      } @else {
+        <p class="queue-panel__empty">Очередь пуста</p>
+      }
+    </div>
+  </ng-template>
+</p-popover>
 <p-popover #volumePopover>
   <ng-template #content>
     <form>

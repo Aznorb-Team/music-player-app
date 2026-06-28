@@ -1,0 +1,198 @@
+<div class="main-scroll">
+  <div class="main-container">
+    <p-card class="news-section">
+      <ng-template #header>
+        <div class="section-header section-header--with-filter">
+          <div class="section-header__title-group">
+            <i class="pi pi-megaphone section-header__icon"></i>
+            <span class="section-header__title">Новости</span>
+          </div>
+          <p-select
+            [options]="contentService.newsCategoryOptions()"
+            [ngModel]="selectedNewsCategory()"
+            (ngModelChange)="onNewsCategoryChange($event)"
+            class="section-header__filter"
+            placeholder="Категория"
+            size="small"
+            [showClear]="true"
+          />
+        </div>
+      </ng-template>
+      @if (contentService.filteredNewsItems().length) {
+        <p-carousel
+          class="news-carousel"
+          [value]="contentService.filteredNewsItems()"
+        [numVisible]="2"
+        [numScroll]="1"
+        [circular]="true"
+        [responsiveOptions]="contentService.newsCarouselOptions"
+        [autoplayInterval]="5000"
+      >
+        <ng-template let-news #item>
+          <div class="news-card">
+            <div class="news-card__image-wrapper">
+              <img
+                [src]="news.imageUrl"
+                [alt]="news.title"
+                class="news-card__image"
+                (error)="onImageError($event)"
+              />
+              <p-tag
+                [value]="news.category"
+                severity="warn"
+                class="news-card__tag"
+                [ngStyle]="{ 'left.px': 8, 'top.px': 8 }"
+              />
+            </div>
+            <div class="news-card__content">
+              <span class="news-card__meta">
+                {{ news.source }} ·
+                {{ news.publishedAt | date: 'd MMMM y' }}
+              </span>
+              <h3 class="news-card__title">{{ news.title }}</h3>
+              <p class="news-card__summary">{{ news.summary }}</p>
+              <div class="news-card__actions">
+                @if (news.artist) {
+                  <p-button
+                    icon="pi pi-play"
+                    [rounded]="true"
+                    severity="warn"
+                    [outlined]="true"
+                    size="small"
+                    (onClick)="playNewsTrack(news)"
+                  />
+                }
+                <p-button
+                  label="Читать"
+                  icon="pi pi-arrow-right"
+                  iconPos="right"
+                  [text]="true"
+                  severity="warn"
+                  size="small"
+                  (onClick)="openNewsDetail(news, $event)"
+                />
+              </div>
+            </div>
+          </div>
+        </ng-template>
+      </p-carousel>
+      } @else {
+        <div class="concerts-empty">
+          <i class="pi pi-search concerts-empty__icon"></i>
+          <p>Новости по заданным фильтрам не найдены</p>
+        </div>
+      }
+    </p-card>
+
+    <p-popover #newsDetailPopover>
+      <news-detail-card />
+    </p-popover>
+
+    <hr />
+
+    <p-card class="concerts-section">
+      <div class="concert-header">
+        <div class="concert-header__title-container">
+          <i class="pi pi-calendar concert-header__icon"></i>
+          <p class="concert-header__title-container__text">
+            Ближайшие концерты
+            @if (selectedCity()) {
+              в городе {{ selectedCity() }}
+            }
+          </p>
+        </div>
+        <div class="concert-header__filters">
+          <p-select
+            [options]="contentService.cityGroups()"
+            [ngModel]="selectedCity()"
+            (ngModelChange)="onCityChange($event)"
+            [group]="true"
+            class="concert-header__select"
+            placeholder="Город"
+            size="small"
+            [showClear]="true"
+          >
+            <ng-template let-group #group>
+              <div class="concert-header__select__label">
+                <span class="concert-header__select__label__span">{{
+                  group.label
+                }}</span>
+              </div>
+            </ng-template>
+          </p-select>
+          <p-select
+            [options]="contentService.concertStatusOptions()"
+            [ngModel]="selectedConcertStatus()"
+            (ngModelChange)="onConcertStatusChange($event)"
+            class="concert-header__select"
+            placeholder="Статус билетов"
+            size="small"
+            [showClear]="true"
+          />
+        </div>
+      </div>
+
+      @if (contentService.filteredConcerts().length) {
+        <div class="concerts-grid">
+          @for (concert of contentService.filteredConcerts(); track concert.id) {
+            <div class="concert-card">
+              <div class="concert-card__image-wrapper">
+                <img
+                  [src]="concert.imageUrl"
+                  [alt]="concert.artist"
+                  class="concert-card__image"
+                  (error)="onImageError($event)"
+                />
+                <p-tag
+                  [value]="concert.status"
+                  [severity]="contentService.getConcertStatusSeverity(concert.status)"
+                  class="concert-card__tag"
+                  [ngStyle]="{ 'left.px': 8, 'top.px': 8 }"
+                />
+              </div>
+              <div class="concert-card__content">
+                <h3 class="concert-card__artist">{{ concert.artist }}</h3>
+                <p class="concert-card__venue">
+                  <i class="pi pi-map-marker"></i>
+                  {{ concert.venue }}, {{ concert.city }}
+                </p>
+                <p class="concert-card__date">
+                  <i class="pi pi-calendar"></i>
+                  {{ concert.date | date: 'd MMMM y' }}
+                </p>
+                <div class="concert-card__footer">
+                  <span class="concert-card__price">
+                    от
+                    {{ contentService.formatTicketPrice(concert.ticketPrice) }}
+                  </span>
+                  <span class="concert-card__actions">
+                    <p-button
+                      icon="pi pi-play"
+                      severity="warn"
+                      [outlined]="true"
+                      [rounded]="true"
+                      size="small"
+                      (onClick)="playArtistTrack(concert.artist)"
+                      [disabled]="concert.status === concertStatus.SOLD_OUT"
+                    />
+                    <p-button
+                      icon="pi pi-ticket"
+                      severity="warn"
+                      size="small"
+                      [disabled]="concert.status === concertStatus.SOLD_OUT"
+                    />
+                  </span>
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      } @else {
+        <div class="concerts-empty">
+          <i class="pi pi-info-circle concerts-empty__icon"></i>
+          <p>Концерты по заданным фильтрам не найдены</p>
+        </div>
+      }
+    </p-card>
+  </div>
+</div>
