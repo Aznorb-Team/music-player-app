@@ -1,0 +1,60 @@
+@if (tracks().length) {
+  <p-card class="concerts-section">
+    <ng-template #header>
+      <div class="section-header">
+        <i class="pi pi-list section-header__icon"></i>
+        <span class="section-header__title">{{ sectionTitle() }}</span>
+      </div>
+    </ng-template>
+
+    <div class="concerts-grid">
+      @for (track of tracks(); track track.id) {
+        <div class="concert-card">
+          <div class="concert-card__image-wrapper">
+            <img
+              [src]="track.coverUrl"
+              [alt]="track.title"
+              class="concert-card__image"
+              appImageFallback
+            />
+            <p-tag
+              [value]="tagLabel()"
+              severity="warn"
+              class="concert-card__tag"
+              [ngStyle]="{ 'left.px': 8, 'top.px': 8 }"
+            />
+          </div>
+          <div class="concert-card__content">
+            <h3 class="concert-card__artist">{{ track.title }}</h3>
+            <p class="concert-card__venue">
+              <i class="pi pi-user"></i>
+              {{ track.artist }}
+            </p>
+            @if (track.album) {
+              <p class="concert-card__date">
+                <i class="pi pi-headphones"></i>
+                {{ track.album }}
+              </p>
+            }
+            <div class="concert-card__footer">
+              <span class="concert-card__price">Трек</span>
+              <span class="concert-card__actions">
+                <p-button
+                  [icon]="trackButtonIcon(track)"
+                  severity="warn"
+                  [outlined]="true"
+                  [rounded]="true"
+                  size="small"
+                  (onClick)="toggleTrack(track)"
+                  [attr.aria-label]="
+                    isPlayingTrack(track) ? 'Пауза' : 'Воспроизвести'
+                  "
+                />
+              </span>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  </p-card>
+}

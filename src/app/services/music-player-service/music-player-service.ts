@@ -17,6 +17,7 @@ import {
 import { ECacheItemName } from '../../app.consts';
 
 import { DEFAULT_PLAYLIST } from './music-player-service.const';
+import { ARTIST_GENRE_MAP } from '../../components/genres/genres.const';
 
 import { ERepeatMode, EQueueContext, ITrack, QUEUE_CONTEXT_LABELS } from './music-player-service.schema';
 import { SearchFilterService } from '../search-filter-service/search-filter-service';
@@ -96,7 +97,12 @@ export class MusicPlayerService {
     }
 
     return tracks.filter((track) =>
-      this._searchFilter.matches(track.title, track.artist, track.album),
+      this._searchFilter.matches(
+        track.title,
+        track.artist,
+        track.album,
+        track.lyrics,
+      ),
     );
   });
 
@@ -114,6 +120,8 @@ export class MusicPlayerService {
   private _audioWithListeners: HTMLAudioElement | null = null;
   private _loadToken = 0;
   private _preferencesLoaded = false;
+  private _volumeBeforeMute = 100;
+  private _mediaSessionReady = false;
 
   public registerAudioElement(audio: HTMLAudioElement): void {
     if (!this._isBrowser) {
@@ -126,6 +134,7 @@ export class MusicPlayerService {
 
     this._audio = audio;
     this._attachAudioListeners();
+    this._setupMediaSession();
     this._loadVolumeFromCache();
     this._loadPlaybackPreferences();
     void this._applyTrackSource(false);
@@ -162,6 +171,7 @@ export class MusicPlayerService {
     this._audio.pause();
 
     this.isPlaying.set(false);
+    this._updateMediaSessionPlaybackState();
 
   }
 
@@ -416,6 +426,42 @@ export class MusicPlayerService {
     }
   }
 
+  public playByGenre(genreId: string): void {
+    const genreTracks = this.playlist().filter((item) =>
+      ARTIST_GENRE_MAP[item.artist]?.includes(genreId),
+    );
+    const track = genreTracks[0];
+
+    if (track) {
+      this.playTrackInContext(track, genreTracks, EQueueContext.GENRE);
+    }
+  }
+
+  public seekBySeconds(delta: number): void {
+    if (!this._audio) {
+      return;
+    }
+
+    const duration = this._audio.duration || 0;
+    const next = Math.min(duration, Math.max(0, this._audio.currentTime + delta));
+    this._audio.currentTime = next;
+    this.currentTime.set(next);
+  }
+
+  public adjustVolume(delta: number): void {
+    this.setVolume(this.volume() + delta);
+  }
+
+  public toggleMute(): void {
+    if (this.volume() === 0) {
+      this.setVolume(this._volumeBeforeMute || 50);
+      return;
+    }
+
+    this._volumeBeforeMute = this.volume();
+    this.setVolume(0);
+  }
+
 
 
   public playFromQueueOffset(offset: number): void {
@@ -503,6 +549,7 @@ export class MusicPlayerService {
 
     this.currentTrack.set(tracks[index]);
 
+    this._updateMediaSessionMetadata();
     void this._applyTrackSource(shouldPlay);
 
   }
@@ -622,6 +669,7 @@ export class MusicPlayerService {
       if (token === this._loadToken) {
 
         this.isPlaying.set(false);
+        this._updateMediaSessionPlaybackState();
 
         this._notifyAudioError(track);
 
@@ -728,10 +776,12 @@ export class MusicPlayerService {
       await this._audio.play();
 
       this.isPlaying.set(true);
+      this._updateMediaSessionPlaybackState();
 
     } catch {
 
       this.isPlaying.set(false);
+      this._updateMediaSessionPlaybackState();
 
       if (this._audio.error) {
 
@@ -1048,6 +1098,75 @@ export class MusicPlayerService {
 
     return Array.from({ length }, (_, index) => index);
 
+  }
+
+  private _setupMediaSession(): void {
+    if (
+      !this._isBrowser ||
+      this._mediaSessionReady ||
+      !('mediaSession' in navigator)
+    ) {
+      return;
+    }
+
+    this._mediaSessionReady = true;
+
+    try {
+      navigator.mediaSession.setActionHandler('play', () => {
+        void this._safePlay();
+      });
+      navigator.mediaSession.setActionHandler('pause', () => {
+        this.pause();
+      });
+      navigator.mediaSession.setActionHandler('previoustrack', () => {
+        this.previous();
+      });
+      navigator.mediaSession.setActionHandler('nexttrack', () => {
+        this.next();
+      });
+      navigator.mediaSession.setActionHandler('seekbackward', () => {
+        this.seekBySeconds(-10);
+      });
+      navigator.mediaSession.setActionHandler('seekforward', () => {
+        this.seekBySeconds(10);
+      });
+    } catch {
+      return;
+    }
+
+    this._updateMediaSessionMetadata();
+    this._updateMediaSessionPlaybackState();
+  }
+
+  private _updateMediaSessionMetadata(): void {
+    if (!this._isBrowser || !('mediaSession' in navigator)) {
+      return;
+    }
+
+    const track = this.currentTrack();
+
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: track.title,
+      artist: track.artist,
+      album: track.album ?? '',
+      artwork: [
+        {
+          src: track.coverUrl,
+          sizes: '512x512',
+          type: 'image/jpeg',
+        },
+      ],
+    });
+  }
+
+  private _updateMediaSessionPlaybackState(): void {
+    if (!this._isBrowser || !('mediaSession' in navigator)) {
+      return;
+    }
+
+    navigator.mediaSession.playbackState = this.isPlaying()
+      ? 'playing'
+      : 'paused';
   }
 
 }

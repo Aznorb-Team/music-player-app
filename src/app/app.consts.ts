@@ -55,6 +55,7 @@ export enum ECacheItemName {
   SHUFFLE = 'SHUFFLE',
   REPEAT_MODE = 'REPEAT_MODE',
   FAVORITES = 'FAVORITES',
+  AUTH_USER = 'AUTH_USER',
 }
 
 export const DARK_THEME_CLASS_NAME = 'my-app-dark';

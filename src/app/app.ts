@@ -7,15 +7,13 @@ import {
   OnInit,
   signal,
 } from '@angular/core';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { PanelModule } from 'primeng/panel';
 import { MenuItem } from 'primeng/api';
 import { PanelMenu } from 'primeng/panelmenu';
 import { BadgeModule } from 'primeng/badge';
 import { Ripple } from 'primeng/ripple';
 import {
-  DARK_THEME_CLASS_NAME,
-  ECacheItemName,
   SIDE_MENU_CONFIG_MAIN,
   SIDE_MENU_CONFIG_USER,
 } from './app.consts';
@@ -27,19 +25,19 @@ import { Button } from 'primeng/button';
 import { ToggleSwitch } from 'primeng/toggleswitch';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { debounceTime, distinctUntilChanged } from 'rxjs';
 import { MusicPlayerComponent } from './components/music-player/music-player';
-import { CacheService } from './services/cache-service/cache-service';
-import { tap, filter, debounceTime, distinctUntilChanged } from 'rxjs';
-import {
-  ETypeActionCache,
-  ETypeCache,
-  ICacheItem,
-} from './services/cache-service/cache-service.schema';
 import { Toast } from 'primeng/toast';
 import { Avatar } from 'primeng/avatar';
 import { SearchFilterService } from './services/search-filter-service/search-filter-service';
+import { SearchDiscoveryService } from './services/search-filter-service/search-discovery-service';
 import { FavoritesService } from './services/favorites-service/favorites-service';
+import { AppSettingsService } from './services/app-settings-service/app-settings-service';
+import { AuthService } from './services/auth-service/auth-service';
+import { MusicPlayerService } from './services/music-player-service/music-player-service';
 import { IMAGE_FALLBACK_URL } from './core/constants/image-fallback.const';
+import { LoginDialogComponent } from './components/login-dialog/login-dialog';
+import { ISearchResultItem } from './services/search-filter-service/search-filter-service.schema';
 
 @Component({
   selector: 'app-root',
@@ -62,27 +60,38 @@ import { IMAGE_FALLBACK_URL } from './core/constants/image-fallback.const';
     MusicPlayerComponent,
     Toast,
     Avatar,
+    LoginDialogComponent,
   ],
   templateUrl: './app.html',
   styleUrl: './app.less',
 })
 export class App implements OnInit {
   private readonly _dr = inject(DestroyRef);
-  private readonly _cacheService = inject(CacheService);
+  private readonly _router = inject(Router);
   private readonly _searchFilter = inject(SearchFilterService);
+  private readonly _searchDiscovery = inject(SearchDiscoveryService);
   private readonly _favoritesService = inject(FavoritesService);
+  private readonly _appSettings = inject(AppSettingsService);
+  private readonly _authService = inject(AuthService);
+  private readonly _musicPlayer = inject(MusicPlayerService);
 
   protected readonly title = signal('Music Player');
   protected readonly itemsMain = signal<MenuItem[]>([]);
   protected readonly itemsUser = signal<MenuItem[]>([]);
   protected readonly searchFilter = this._searchFilter;
+  protected readonly searchDiscovery = this._searchDiscovery;
+  protected readonly appSettings = this._appSettings;
+  protected readonly authService = this._authService;
   protected readonly logoUrl = IMAGE_FALLBACK_URL;
-  protected isDarkMode = new FormControl<boolean>(false);
-  protected isFullSidebarMenu = new FormControl<boolean>(true);
+  protected readonly showLoginDialog = signal(false);
+  protected readonly searchFocused = signal(false);
+
   protected searchControl = new FormControl('', { nonNullable: true });
 
   constructor() {
     this._favoritesService.ensureLoaded();
+    this._authService.ensureLoaded();
+    this._appSettings.initFromCache();
 
     effect(() => {
       this._favoritesService.favoritesCount();
@@ -92,10 +101,8 @@ export class App implements OnInit {
 
   public ngOnInit(): void {
     this._initSideMenuConfig();
-    this._subscribeOnDarkModeToggle();
-    this._subscribeOnSideBarToggle();
     this._subscribeOnSearch();
-    this._loadStartDate();
+    this._syncSearchControlFromService();
   }
 
   protected submitSearch(): void {
@@ -105,10 +112,76 @@ export class App implements OnInit {
   protected clearSearch(): void {
     this.searchControl.setValue('');
     this._searchFilter.clearSearch();
+    this.searchFocused.set(false);
+  }
+
+  protected onSearchFocus(): void {
+    this.searchFocused.set(true);
+  }
+
+  protected onSearchBlur(): void {
+    setTimeout(() => this.searchFocused.set(false), 150);
   }
 
   protected toggleFullSidebarMenu(): void {
-    this.isFullSidebarMenu.setValue(!this.isFullSidebarMenu.getRawValue());
+    this._appSettings.setSidebarExpanded(!this._appSettings.isSidebarExpanded());
+  }
+
+  protected onDarkModeChange(enabled: boolean): void {
+    this._appSettings.setDarkMode(enabled);
+  }
+
+  protected openLogin(): void {
+    if (this._authService.isAuthenticated()) {
+      this._authService.logout();
+      return;
+    }
+
+    this.showLoginDialog.set(true);
+  }
+
+  protected closeLoginDialog(): void {
+    this.showLoginDialog.set(false);
+  }
+
+  protected loginButtonLabel(): string {
+    return this._authService.isAuthenticated() ? 'Выйти' : 'Войти';
+  }
+
+  protected selectSearchResult(item: ISearchResultItem): void {
+    if (item.trackId) {
+      const track = this._musicPlayer
+        .playlist()
+        .find((entry) => entry.id === item.trackId);
+      if (track) {
+        this._musicPlayer.playTrack(track);
+      }
+    } else if (item.artistName) {
+      this._musicPlayer.playByArtist(item.artistName);
+    }
+
+    if (item.route) {
+      void this._router.navigate(item.route);
+    }
+
+    this.clearSearch();
+  }
+
+  protected resultIcon(type: ISearchResultItem['type']): string {
+    switch (type) {
+      case 'track':
+        return 'pi pi-play';
+      case 'artist':
+        return 'pi pi-user';
+      case 'album':
+        return 'pi pi-headphones';
+      case 'news':
+        return 'pi pi-megaphone';
+      case 'concert':
+        return 'pi pi-calendar';
+      default:
+        return 'pi pi-search';
+    }
   }
 
   private _initSideMenuConfig(): void {
@@ -130,103 +203,12 @@ export class App implements OnInit {
     );
   }
 
-  private _loadStartDate(): void {
-    this._loadTheme();
-    this._loadSideBarMenu();
-  }
-
-  private _loadTheme(): void {
-    const themeItem: ICacheItem = {
-      name: ECacheItemName.THEME,
-    };
-
-    const valueTheme = this._cacheService.useCacheService(
-      themeItem,
-      ETypeCache.LOCAL,
-      ETypeActionCache.LOAD,
-    );
-
-    if (valueTheme) {
-      this.isDarkMode.setValue(this._parseCachedBoolean(valueTheme, false));
-    }
-  }
-
-  private _loadSideBarMenu(): void {
-    const sideBarItem: ICacheItem = {
-      name: ECacheItemName.SIDE_MENU_OPEN,
-    };
-
-    const valueSideBar = this._cacheService.useCacheService(
-      sideBarItem,
-      ETypeCache.LOCAL,
-      ETypeActionCache.LOAD,
-    );
-
-    if (valueSideBar) {
-      this.isFullSidebarMenu.setValue(
-        this._parseCachedBoolean(valueSideBar, true),
-      );
-    }
-  }
-
-  private _parseCachedBoolean(value: string, fallback: boolean): boolean {
-    try {
-      const parsed: unknown = JSON.parse(value);
-      return typeof parsed === 'boolean' ? parsed : fallback;
-    } catch {
-      return fallback;
-    }
-  }
-
-  private _subscribeOnDarkModeToggle(): void {
-    this.isDarkMode.valueChanges
-      .pipe(
-        filter((value) => typeof value === 'boolean'),
-        tap((value) => {
-          const themeItem: ICacheItem = {
-            name: ECacheItemName.THEME,
-            value: value?.toString(),
-          };
-
-          this._cacheService.useCacheService(
-            themeItem,
-            ETypeCache.LOCAL,
-            ETypeActionCache.SAVE,
-          );
-        }),
-        takeUntilDestroyed(this._dr),
-      )
-      .subscribe((value) => {
-        const element = document.querySelector('html');
-        if (element) {
-          if (value) {
-            if (!element.classList.contains(DARK_THEME_CLASS_NAME)) {
-              element.classList.add(DARK_THEME_CLASS_NAME);
-            }
-          } else {
-            if (element.classList.contains(DARK_THEME_CLASS_NAME)) {
-              element.classList.remove(DARK_THEME_CLASS_NAME);
-            }
-          }
-        }
+  private _syncSearchControlFromService(): void {
+    if (this._searchFilter.searchQuery()) {
+      this.searchControl.setValue(this._searchFilter.searchQuery(), {
+        emitEvent: false,
       });
-  }
-
-  private _subscribeOnSideBarToggle(): void {
-    this.isFullSidebarMenu.valueChanges
-      .pipe(takeUntilDestroyed(this._dr))
-      .subscribe((value) => {
-        const sideBarItem: ICacheItem = {
-          name: ECacheItemName.SIDE_MENU_OPEN,
-          value: value?.toString(),
-        };
-
-        this._cacheService.useCacheService(
-          sideBarItem,
-          ETypeCache.LOCAL,
-          ETypeActionCache.SAVE,
-        );
-      });
+    }
   }
 
   private _subscribeOnSearch(): void {

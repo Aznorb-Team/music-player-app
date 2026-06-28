@@ -13,31 +13,131 @@
           <div class="settings-item__info">
             <p class="settings-item__title">Тёмная тема</p>
             <p class="settings-item__description">
-              Переключатель в верхней панели. Выбор сохраняется в localStorage.
+              Переключение оформления приложения
             </p>
           </div>
-          <i class="pi pi-moon settings-item__icon"></i>
-        </div>
-
-        <div class="settings-item">
-          <div class="settings-item__info">
-            <p class="settings-item__title">Громкость плеера</p>
-            <p class="settings-item__description">
-              Текущее значение: {{ musicPlayerService.volume() }}%
-            </p>
-          </div>
-          <i class="pi pi-volume-up settings-item__icon"></i>
+          <p-toggleswitch
+            [ngModel]="appSettings.isDarkMode()"
+            (ngModelChange)="onDarkModeChange($event)"
+          />
         </div>
 
         <div class="settings-item">
           <div class="settings-item__info">
             <p class="settings-item__title">Боковое меню</p>
             <p class="settings-item__description">
-              Состояние свёрнутости сохраняется автоматически при клике на
-              логотип.
+              Развёрнутое или компактное меню
             </p>
           </div>
-          <i class="pi pi-bars settings-item__icon"></i>
+          <p-toggleswitch
+            [ngModel]="appSettings.isSidebarExpanded()"
+            (ngModelChange)="onSidebarChange($event)"
+          />
+        </div>
+
+        <div class="settings-item settings-item--column">
+          <div class="settings-item__info">
+            <p class="settings-item__title">Громкость плеера</p>
+            <p class="settings-item__description">
+              Текущее значение: {{ musicPlayerService.volume() }}%
+            </p>
+          </div>
+          <p-slider
+            [ngModel]="musicPlayerService.volume()"
+            (ngModelChange)="onVolumeChange($event)"
+            [min]="0"
+            [max]="100"
+            class="settings-item__slider"
+          />
+        </div>
+
+        <div class="settings-item">
+          <div class="settings-item__info">
+            <p class="settings-item__title">Случайный порядок</p>
+            <p class="settings-item__description">
+              Shuffle для очереди воспроизведения
+            </p>
+          </div>
+          <p-toggleswitch
+            [ngModel]="musicPlayerService.shuffle()"
+            (ngModelChange)="onShuffleChange($event)"
+          />
+        </div>
+
+        <div class="settings-item settings-item--column">
+          <div class="settings-item__info">
+            <p class="settings-item__title">Повтор</p>
+            <p class="settings-item__description">
+              Режим repeat для плеера
+            </p>
+          </div>
+          <div class="settings-item__repeat-group">
+            <p-button
+              label="Выкл"
+              size="small"
+              [outlined]="musicPlayerService.repeatMode() !== repeatMode.OFF"
+              [severity]="
+                musicPlayerService.repeatMode() === repeatMode.OFF
+                  ? 'warn'
+                  : 'secondary'
+              "
+              (onClick)="setRepeatMode(repeatMode.OFF)"
+            />
+            <p-button
+              label="Весь"
+              size="small"
+              [outlined]="musicPlayerService.repeatMode() !== repeatMode.ALL"
+              [severity]="
+                musicPlayerService.repeatMode() === repeatMode.ALL
+                  ? 'warn'
+                  : 'secondary'
+              "
+              (onClick)="setRepeatMode(repeatMode.ALL)"
+            />
+            <p-button
+              label="Один"
+              size="small"
+              [outlined]="musicPlayerService.repeatMode() !== repeatMode.ONE"
+              [severity]="
+                musicPlayerService.repeatMode() === repeatMode.ONE
+                  ? 'warn'
+                  : 'secondary'
+              "
+              (onClick)="setRepeatMode(repeatMode.ONE)"
+            />
+          </div>
+        </div>
+
+        @if (authService.isAuthenticated()) {
+          <div class="settings-item">
+            <div class="settings-item__info">
+              <p class="settings-item__title">Аккаунт</p>
+              <p class="settings-item__description">
+                {{ authService.currentUser()?.email }}
+              </p>
+            </div>
+            <p-button
+              label="Выйти"
+              severity="secondary"
+              [text]="true"
+              (onClick)="logout()"
+            />
+          </div>
+        }
+
+        <div class="settings-item settings-item--danger">
+          <div class="settings-item__info">
+            <p class="settings-item__title">Сброс данных</p>
+            <p class="settings-item__description">
+              Очистить тему, меню и другие локальные настройки
+            </p>
+          </div>
+          <p-button
+            label="Сбросить"
+            severity="danger"
+            [outlined]="true"
+            (onClick)="clearLocalData()"
+          />
         </div>
       </div>
     </p-card>

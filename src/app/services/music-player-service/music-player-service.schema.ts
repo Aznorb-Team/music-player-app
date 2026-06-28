@@ -21,6 +21,7 @@ export enum EQueueContext {
   FAVORITES = 'favorites',
   ARTIST = 'artist',
   ALBUM = 'album',
+  GENRE = 'genre',
 }
 
 export const QUEUE_CONTEXT_LABELS: Record<EQueueContext, string> = {
@@ -29,4 +30,5 @@ export const QUEUE_CONTEXT_LABELS: Record<EQueueContext, string> = {
   [EQueueContext.FAVORITES]: 'Избранное',
   [EQueueContext.ARTIST]: 'Артист',
   [EQueueContext.ALBUM]: 'Альбом',
+  [EQueueContext.GENRE]: 'Жанр',
 };

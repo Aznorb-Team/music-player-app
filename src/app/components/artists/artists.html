@@ -22,7 +22,11 @@
       @if (artists().length) {
         <div class="catalog-grid">
           @for (artist of artists(); track artist.name) {
-            <div class="catalog-card">
+            <div
+              class="catalog-card catalog-card--interactive"
+              [class.catalog-card--selected]="selectedArtistName() === artist.name"
+              (click)="selectArtist(artist.name)"
+            >
               <div class="catalog-card__image-wrapper">
                 <img
                   [src]="artist.coverUrl"
@@ -35,16 +39,22 @@
                 <h3 class="catalog-card__title">{{ artist.name }}</h3>
                 <p class="catalog-card__meta">
                   {{ artist.trackCount }}
-                  {{ artist.trackCount === 1 ? 'трек' : 'трека' }}
+                  {{ artist.trackCount === 1 ? 'трек' : 'треков' }}
                 </p>
-                <div class="catalog-card__footer">
+                <div class="catalog-card__actions">
                   <p-button
                     icon="pi pi-play"
-                    severity="warn"
-                    [outlined]="true"
-                    [rounded]="true"
+                    label="Слушать"
                     size="small"
-                    (onClick)="playArtist(artist.name)"
+                    (onClick)="playArtist(artist.name, $event)"
+                  />
+                  <p-button
+                    icon="pi pi-headphones"
+                    label="Альбомы"
+                    size="small"
+                    severity="secondary"
+                    [text]="true"
+                    (onClick)="openAlbumsForArtist(artist.name, $event)"
                   />
                 </div>
               </div>
@@ -58,5 +68,12 @@
         </div>
       }
     </p-card>
+
+    <app-track-cards-grid
+      [tracks]="selectedArtistTracks()"
+      [tagLabel]="selectedArtistName() ?? ''"
+      [sectionTitle]="selectedArtistSectionTitle()"
+      [queueContext]="queueContext.ARTIST"
+    />
   </div>
 </div>

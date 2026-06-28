@@ -1,4 +1,13 @@
-import { ChangeDetectionStrategy, Component, computed, inject, model } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  model,
+  OnInit,
+  signal,
+} from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
 import { Card } from 'primeng/card';
 import { Button } from 'primeng/button';
 import { Select } from 'primeng/select';
@@ -11,20 +20,48 @@ import {
   GENRE_ITEMS,
 } from '../genres/genres.const';
 import { ImageFallbackDirective } from '../../core/directives/image-fallback.directive';
+import { TrackCardsGridComponent } from '../track-cards-grid/track-cards-grid';
+import { APP_ROUTE_PATHS } from '../../app.routes.const';
+import { EQueueContext } from '../../services/music-player-service/music-player-service.schema';
+
+interface IArtistSummary {
+  name: string;
+  coverUrl: string;
+  trackCount: number;
+}
 
 @Component({
   selector: 'app-artists',
   templateUrl: './artists.html',
   styleUrl: './artists.less',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Card, Button, Select, FormsModule, ImageFallbackDirective],
+  imports: [
+    Card,
+    Button,
+    Select,
+    FormsModule,
+    ImageFallbackDirective,
+    TrackCardsGridComponent,
+  ],
 })
-export class ArtistsComponent {
+export class ArtistsComponent implements OnInit {
   private readonly _musicPlayerService = inject(MusicPlayerService);
+  private readonly _route = inject(ActivatedRoute);
+  private readonly _router = inject(Router);
   protected readonly contentService = inject(ContentService);
   protected readonly searchFilter = inject(SearchFilterService);
 
+  protected readonly queueContext = EQueueContext;
   protected readonly selectedGenreId = model<string | undefined>(undefined);
+  protected readonly selectedArtistName = signal<string | null>(null);
+
+  public ngOnInit(): void {
+    const genre = this._route.snapshot.queryParamMap.get('genre');
+    if (genre) {
+      this.selectedGenreId.set(genre);
+      this.contentService.setSelectedGenreId(genre);
+    }
+  }
 
   protected readonly genreOptions = GENRE_ITEMS.map((genre) => ({
     label: genre.name,
@@ -32,10 +69,7 @@ export class ArtistsComponent {
   }));
 
   protected readonly artists = computed(() => {
-    const map = new Map<
-      string,
-      { name: string; coverUrl: string; trackCount: number }
-    >();
+    const map = new Map<string, IArtistSummary>();
 
     for (const track of this._musicPlayerService.playlist()) {
       const existing = map.get(track.artist);
@@ -69,12 +103,42 @@ export class ArtistsComponent {
     return result;
   });
 
+  protected readonly selectedArtistTracks = computed(() => {
+    const artistName = this.selectedArtistName();
+    if (!artistName) {
+      return [];
+    }
+
+    return this._musicPlayerService
+      .playlist()
+      .filter((track) => track.artist === artistName);
+  });
+
+  protected readonly selectedArtistSectionTitle = computed(() => {
+    const name = this.selectedArtistName();
+    return name ? `Треки артиста «${name}»` : '';
+  });
+
   protected onGenreChange(genreId: string | undefined): void {
     this.selectedGenreId.set(genreId);
     this.contentService.setSelectedGenreId(genreId);
+    this.selectedArtistName.set(null);
   }
 
-  protected playArtist(artist: string): void {
-    this._musicPlayerService.playByArtist(artist);
+  protected selectArtist(artistName: string): void {
+    this.selectedArtistName.set(artistName);
+  }
+
+  protected playArtist(artistName: string, event?: Event): void {
+    event?.stopPropagation();
+    this.selectedArtistName.set(artistName);
+    this._musicPlayerService.playByArtist(artistName);
+  }
+
+  protected openAlbumsForArtist(artistName: string, event: Event): void {
+    event.stopPropagation();
+    void this._router.navigate(['/', APP_ROUTE_PATHS.ALBUMS], {
+      queryParams: { artist: artistName },
+    });
   }
 }

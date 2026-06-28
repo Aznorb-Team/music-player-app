@@ -2,16 +2,27 @@
   <div class="page-container">
     <p-card>
       <ng-template #header>
-        <div class="section-header">
-          <i class="pi pi-headphones section-header__icon"></i>
-          <span class="section-header__title">Альбомы</span>
+        <div class="section-header section-header--with-filter">
+          <div class="section-header__title-group">
+            <i class="pi pi-headphones section-header__icon"></i>
+            <span class="section-header__title">
+              Альбомы
+              @if (selectedArtistFilter()) {
+                · {{ selectedArtistFilter() }}
+              }
+            </span>
+          </div>
         </div>
       </ng-template>
 
       @if (albums().length) {
         <div class="catalog-grid">
-          @for (album of albums(); track album.name + album.artist) {
-            <div class="catalog-card">
+          @for (album of albums(); track album.key) {
+            <div
+              class="catalog-card catalog-card--interactive"
+              [class.catalog-card--selected]="selectedAlbumKey() === album.key"
+              (click)="selectAlbum(album)"
+            >
               <div class="catalog-card__image-wrapper">
                 <img
                   [src]="album.coverUrl"
@@ -25,16 +36,14 @@
                 <p class="catalog-card__meta">{{ album.artist }}</p>
                 <p class="catalog-card__meta">
                   {{ album.trackCount }}
-                  {{ album.trackCount === 1 ? 'трек' : 'трека' }}
+                  {{ album.trackCount === 1 ? 'трек' : 'треков' }}
                 </p>
-                <div class="catalog-card__footer">
+                <div class="catalog-card__actions">
                   <p-button
                     icon="pi pi-play"
-                    severity="warn"
-                    [outlined]="true"
-                    [rounded]="true"
+                    label="Слушать"
                     size="small"
-                    (onClick)="playAlbum(album)"
+                    (onClick)="playAlbum(album, $event)"
                   />
                 </div>
               </div>
@@ -48,5 +57,12 @@
         </div>
       }
     </p-card>
+
+    <app-track-cards-grid
+      [tracks]="selectedAlbumTracks()"
+      [tagLabel]="selectedAlbumTagLabel()"
+      [sectionTitle]="selectedAlbumSectionTitle()"
+      [queueContext]="queueContext.ALBUM"
+    />
   </div>
 </div>

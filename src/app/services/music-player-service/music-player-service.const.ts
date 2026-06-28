@@ -1,5 +1,6 @@
 import { ITrack } from './music-player-service.schema';
 import { ARTIST_IMAGE_URLS } from '../content-service/content-service.const';
+
 const DRUGS_LYRICS = `'Cause everybody's on drugs
 Kill yourself is what they said to me
 I'm already dead, just differently
@@ -14,10 +15,10 @@ I just wanna thank all my fans especially, without you is the death of me
 
 export const TRACK_SOURCES = {
   firDrugs: '/audio/Falling In Reverse - Drugs.mp3',
-  firVoices: '/audio/Falling In Reverse - Drugs.mp3',
+  firVoices: '/audio/falling-in-reverse-voices.mp3',
   miwCyberhex: '/audio/motionless-in-white-cyberhex.mp3',
-  badOmensJustPretend: '/audio/motionless-in-white-cyberhex.mp3',
-  bmthTeardrops: '/audio/Falling In Reverse - Drugs.mp3',
+  badOmensJustPretend: '/audio/bad-omens-just-pretend.mp3',
+  bmthTeardrops: '/audio/bring-me-the-horizon-teardrops.mp3',
 } as const;
 
 export const DEFAULT_PLAYLIST: ITrack[] = [

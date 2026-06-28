@@ -1,0 +1,50 @@
+<p-dialog
+  header="Вход в аккаунт"
+  [modal]="true"
+  [visible]="visible()"
+  (visibleChange)="onVisibleChange($event)"
+  [style]="{ width: '420px' }"
+  [closable]="true"
+  [dismissableMask]="true"
+>
+  <p class="login-dialog__hint">
+  Демо-доступ: <strong>{{ demoEmail }}</strong> / <strong>{{ demoPassword }}</strong>
+  </p>
+
+  <form class="login-dialog__form" (ngSubmit)="submit()">
+    <label class="login-dialog__field">
+      <span>Email</span>
+      <input
+        pInputText
+        type="email"
+        [formControl]="emailControl"
+        placeholder="demo@music.app"
+        autocomplete="username"
+      />
+    </label>
+
+    <label class="login-dialog__field">
+      <span>Пароль</span>
+      <p-password
+        [formControl]="passwordControl"
+        [feedback]="false"
+        [toggleMask]="true"
+        placeholder="demo"
+        autocomplete="current-password"
+        styleClass="login-dialog__password"
+        inputStyleClass="w-full"
+      />
+    </label>
+
+    <div class="login-dialog__actions">
+      <p-button
+        type="button"
+        label="Отмена"
+        severity="secondary"
+        [text]="true"
+        (onClick)="close()"
+      />
+      <p-button type="submit" label="Войти" />
+    </div>
+  </form>
+</p-dialog>

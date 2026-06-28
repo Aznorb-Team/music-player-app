@@ -44,7 +44,18 @@ export class FavoritesService {
     }
 
     this._loaded = true;
+    this._loadFromCache();
+  }
 
+  public reloadFromCache(): void {
+    if (!this._isBrowser) {
+      return;
+    }
+
+    this._loadFromCache();
+  }
+
+  private _loadFromCache(): void {
     const item: ICacheItem = { name: ECacheItemName.FAVORITES };
     const cached = this._cacheService.useCacheService(
       item,
@@ -53,6 +64,7 @@ export class FavoritesService {
     );
 
     if (!cached) {
+      this._favoriteIds.set([]);
       return;
     }
 

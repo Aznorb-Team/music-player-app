@@ -2,25 +2,29 @@ import {
   AfterViewInit,
   ChangeDetectionStrategy,
   Component,
+  computed,
   DestroyRef,
   effect,
   ElementRef,
   inject,
+  OnDestroy,
   OnInit,
   ViewChild,
 } from '@angular/core';
 import { Toolbar } from 'primeng/toolbar';
 import { Avatar } from 'primeng/avatar';
 import { Button } from 'primeng/button';
-import { Slider } from 'primeng/slider';
 import { Popover } from 'primeng/popover';
+import { Slider } from 'primeng/slider';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TimePipe } from '../../core/pipes/time.pipe';
 import { MiniCardComponent } from './mini-card/mini-card';
+import { PlayerProgressBarComponent } from './player-progress-bar/player-progress-bar';
 import { MusicPlayerService } from '../../services/music-player-service/music-player-service';
 import { ERepeatMode } from '../../services/music-player-service/music-player-service.schema';
 import { FavoritesService } from '../../services/favorites-service/favorites-service';
+import { PlayerHotkeysService } from '../../services/player-hotkeys-service/player-hotkeys-service';
 
 @Component({
   selector: 'music-player',
@@ -37,28 +41,34 @@ import { FavoritesService } from '../../services/favorites-service/favorites-ser
     ReactiveFormsModule,
     TimePipe,
     MiniCardComponent,
+    PlayerProgressBarComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class MusicPlayerComponent implements OnInit, AfterViewInit {
+export class MusicPlayerComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly _dr = inject(DestroyRef);
+  private readonly _hotkeys = inject(PlayerHotkeysService);
   protected readonly playerService = inject(MusicPlayerService);
   protected readonly favoritesService = inject(FavoritesService);
   protected readonly repeatMode = ERepeatMode;
 
   protected volumeForm = new FormControl<number>(100);
-  protected musicProgressBar = new FormControl<number>(0);
+
+  protected readonly progressPercent = computed(() => {
+    const duration = this.playerService.duration();
+    if (!duration) {
+      return 0;
+    }
+
+    return (this.playerService.currentTime() / duration) * 100;
+  });
 
   constructor() {
     effect(() => {
-      if (this.playerService.isDragging()) {
-        return;
+      const volume = this.playerService.volume();
+      if (this.volumeForm.value !== volume) {
+        this.volumeForm.setValue(volume, { emitEvent: false });
       }
-
-      const duration = this.playerService.duration();
-      const currentTime = this.playerService.currentTime();
-      const progress = duration ? (currentTime * 100) / duration : 0;
-      this.musicProgressBar.setValue(progress, { emitEvent: false });
     });
   }
 
@@ -67,6 +77,7 @@ export class MusicPlayerComponent implements OnInit, AfterViewInit {
 
   public ngOnInit(): void {
     this.favoritesService.ensureLoaded();
+    this._hotkeys.enable();
     this._subscribeOnChangeVolume();
   }
 
@@ -81,6 +92,10 @@ export class MusicPlayerComponent implements OnInit, AfterViewInit {
     }
   }
 
+  public ngOnDestroy(): void {
+    this._hotkeys.disable();
+  }
+
   protected clickOnPlayPause(): void {
     this.playerService.togglePlayPause();
   }
@@ -89,12 +104,12 @@ export class MusicPlayerComponent implements OnInit, AfterViewInit {
     this.playerService.reset();
   }
 
-  protected seekAudio(progress: number): void {
-    this.playerService.seek(progress);
+  protected onSeekStart(): void {
+    this.playerService.startDragging();
   }
 
-  protected isDrag(): void {
-    this.playerService.startDragging();
+  protected onSeekEnd(progress: number): void {
+    this.playerService.seek(progress);
   }
 
   protected repeatIcon(): string {

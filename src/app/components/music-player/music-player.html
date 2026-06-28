@@ -70,13 +70,12 @@
     />
   </div>
   <form class="container__timeline-container">
-    <p-slider
-      [formControl]="musicProgressBar"
-      [min]="0"
-      [max]="100"
+    <player-progress-bar
       class="container__timeline-container__timeline"
-      (onChange)="isDrag()"
-      (onSlideEnd)="seekAudio($event.value || 0)"
+      [progress]="progressPercent()"
+      [duration]="playerService.duration()"
+      (seekStart)="onSeekStart()"
+      (seekEnd)="onSeekEnd($event)"
     />
     <div class="container__timeline-container__time">
       <span>{{ playerService.currentTime() | time }}</span>

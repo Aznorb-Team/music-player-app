@@ -6,7 +6,7 @@
         (click)="toggleFullSidebarMenu()"
       >
         <p-avatar [image]="logoUrl" shape="circle" />
-        @if (isFullSidebarMenu.getRawValue()) {
+        @if (appSettings.isSidebarExpanded()) {
           <span> {{ title() }} </span>
         }
       </div>
@@ -29,7 +29,7 @@
               item.icon + ' main-application-panel__side-menu__main__item__icon'
             "
           ></i>
-          @if (isFullSidebarMenu.getRawValue()) {
+          @if (appSettings.isSidebarExpanded()) {
             <span class="main-application-panel__side-menu__main__item__span">
               {{ item.label }}
             </span>
@@ -70,7 +70,7 @@
               item.icon + ' main-application-panel__side-menu__user__item__icon'
             "
           ></i>
-          @if (isFullSidebarMenu.getRawValue()) {
+          @if (appSettings.isSidebarExpanded()) {
             <span class="main-application-panel__side-menu__user__item__span">
               {{ item.label }}
             </span>
@@ -95,50 +95,100 @@
 
   <div class="main-application-panel__container">
     <div class="main-application-panel__container__header">
-      <p-inputgroup
-        class="main-application-panel__container__header__search-field"
-      >
-        <input
-          pInputText
-          placeholder="Поиск треков, артистов, новостей..."
-          [formControl]="searchControl"
-          (keydown.enter)="submitSearch()"
-        />
-        <p-inputgroup-addon>
-          @if (searchFilter.hasActiveSearch()) {
+      <div class="main-application-panel__container__header__search-wrap">
+        <p-inputgroup
+          class="main-application-panel__container__header__search-field"
+        >
+          <input
+            pInputText
+            placeholder="Поиск треков, артистов, текстов..."
+            [formControl]="searchControl"
+            (focus)="onSearchFocus()"
+            (blur)="onSearchBlur()"
+            (keydown.enter)="submitSearch()"
+            aria-label="Поиск"
+            autocomplete="off"
+          />
+          <p-inputgroup-addon>
+            @if (searchFilter.hasActiveSearch()) {
+              <p-button
+                icon="pi pi-times"
+                severity="secondary"
+                variant="text"
+                (onClick)="clearSearch()"
+                aria-label="Очистить поиск"
+              />
+            }
             <p-button
-              icon="pi pi-times"
+              icon="pi pi-search"
               severity="secondary"
               variant="text"
-              (onClick)="clearSearch()"
-              aria-label="Очистить поиск"
+              (onClick)="submitSearch()"
+              aria-label="Поиск"
             />
-          }
-          <p-button
-            icon="pi pi-search"
-            severity="secondary"
-            variant="text"
-            (onClick)="submitSearch()"
-            aria-label="Поиск"
-          />
-        </p-inputgroup-addon>
-      </p-inputgroup>
+          </p-inputgroup-addon>
+        </p-inputgroup>
+
+        @if (searchFocused() && searchFilter.hasActiveSearch()) {
+          <div class="search-suggestions" role="listbox">
+            @if (searchDiscovery.hasNoResults()) {
+              <p class="search-suggestions__empty">
+                Ничего не найдено по запросу «{{ searchFilter.searchQuery() }}»
+              </p>
+            } @else {
+              <p class="search-suggestions__count">
+                Найдено: {{ searchDiscovery.resultsCount() }}
+              </p>
+              <ul class="search-suggestions__list">
+                @for (item of searchDiscovery.results(); track item.id) {
+                  <li>
+                    <button
+                      type="button"
+                      class="search-suggestions__item"
+                      (mousedown)="selectSearchResult(item)"
+                    >
+                      <i [class]="resultIcon(item.type)"></i>
+                      <span class="search-suggestions__text">
+                        <span class="search-suggestions__title">{{ item.title }}</span>
+                        @if (item.subtitle) {
+                          <span class="search-suggestions__subtitle">{{
+                            item.subtitle
+                          }}</span>
+                        }
+                      </span>
+                    </button>
+                  </li>
+                }
+              </ul>
+            }
+          </div>
+        }
+      </div>
 
       <div class="main-application-panel__container__header__user-panel">
         <div
           class="main-application-panel__container__header__user-panel__container"
         >
           <p-toggleswitch
-            [formControl]="isDarkMode"
+            [ngModel]="appSettings.isDarkMode()"
+            (ngModelChange)="onDarkModeChange($event)"
             class="main-application-panel__container__header__user-panel__container__toogle"
           />
           <i
-            [ngClass]="isDarkMode.getRawValue() ? 'pi pi-moon' : 'pi pi-sun'"
+            [ngClass]="appSettings.isDarkMode() ? 'pi pi-moon' : 'pi pi-sun'"
             class="main-application-panel__container__header__user-panel__container__icon"
           ></i>
         </div>
 
-        <p-button label="Войти" />
+        @if (authService.isAuthenticated()) {
+          <p-avatar
+            [label]="authService.currentUser()?.name?.charAt(0) ?? 'U'"
+            shape="circle"
+            class="main-application-panel__container__header__user-panel__avatar"
+          />
+        }
+
+        <p-button [label]="loginButtonLabel()" (onClick)="openLogin()" />
       </div>
     </div>
 
@@ -152,6 +202,9 @@
     <music-player></music-player>
   </div>
 </div>
+@if (showLoginDialog()) {
+  <app-login-dialog (closed)="closeLoginDialog()" />
+}
 <p-toast
   [showTransitionOptions]="'250ms'"
   [showTransformOptions]="'translateX(100%)'"

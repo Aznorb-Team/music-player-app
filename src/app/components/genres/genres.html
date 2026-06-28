@@ -11,7 +11,11 @@
       @if (genres().length) {
         <div class="catalog-grid">
           @for (genre of genres(); track genre.id) {
-            <div class="catalog-card">
+            <div
+              class="catalog-card catalog-card--interactive"
+              [class.catalog-card--selected]="selectedGenreId() === genre.id"
+              (click)="selectGenre(genre.id)"
+            >
               <div class="catalog-card__image-wrapper">
                 <div class="catalog-card__icon-wrapper">
                   <i [class]="genre.icon"></i>
@@ -20,7 +24,27 @@
               <div class="catalog-card__content">
                 <h3 class="catalog-card__title">{{ genre.name }}</h3>
                 <p class="catalog-card__meta">{{ genre.description }}</p>
-                <p class="catalog-card__meta">~{{ genre.trackCount }} треков</p>
+                <p class="catalog-card__meta">
+                  {{ genre.trackCount }}
+                  {{ genre.trackCount === 1 ? 'трек' : 'треков' }}
+                </p>
+                <div class="catalog-card__actions">
+                  <p-button
+                    icon="pi pi-play"
+                    label="Слушать"
+                    size="small"
+                    (onClick)="playGenre(genre.id, $event)"
+                    [disabled]="genre.trackCount === 0"
+                  />
+                  <p-button
+                    icon="pi pi-users"
+                    label="Артисты"
+                    size="small"
+                    severity="secondary"
+                    [text]="true"
+                    (onClick)="openArtistsForGenre(genre.id, $event)"
+                  />
+                </div>
               </div>
             </div>
           }
@@ -32,5 +56,12 @@
         </div>
       }
     </p-card>
+
+    <app-track-cards-grid
+      [tracks]="selectedGenreTracks()"
+      [tagLabel]="selectedGenreName()"
+      [sectionTitle]="selectedGenreSectionTitle()"
+      [queueContext]="queueContext.GENRE"
+    />
   </div>
 </div>

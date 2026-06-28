@@ -3,7 +3,7 @@ export interface IGenreItem {
   name: string;
   description: string;
   icon: string;
-  trackCount: number;
+  trackCount?: number;
 }
 
 export const GENRE_ITEMS: IGenreItem[] = [
@@ -12,28 +12,24 @@ export const GENRE_ITEMS: IGenreItem[] = [
     name: 'Metalcore',
     description: 'Сочетание тяжёлых риффов и мелодичных припевов',
     icon: 'pi pi-bolt',
-    trackCount: 3,
   },
   {
     id: 'post-hardcore',
     name: 'Post-Hardcore',
     description: 'Эмоциональный вокал и экспериментальные аранжировки',
     icon: 'pi pi-wave-pulse',
-    trackCount: 2,
   },
   {
     id: 'alternative-metal',
     name: 'Alternative Metal',
     description: 'Альтернативный метал с элементами электроники',
     icon: 'pi pi-star',
-    trackCount: 2,
   },
   {
     id: 'rock',
     name: 'Rock',
     description: 'Современный рок и его поджанры',
     icon: 'pi pi-discord',
-    trackCount: 5,
   },
 ];
 
