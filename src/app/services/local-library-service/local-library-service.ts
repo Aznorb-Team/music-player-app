@@ -1,4 +1,5 @@
 import './local-library-service.types';
+import { DOCUMENT } from '@angular/common';
 import { Injector, inject, Injectable, PLATFORM_ID, signal } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { CacheService } from '../cache-service/cache-service';
@@ -24,6 +25,7 @@ import {
   UNKNOWN_ARTIST_LABEL,
 } from './local-library-service.const';
 import {
+  ELocalLibraryBackend,
   ELocalLibraryStatus,
   ILocalFileEntry,
   ILocalLibraryMeta,
@@ -51,6 +53,7 @@ export function trackIdFromLocalLibrarySrc(src: string): string {
 })
 export class LocalLibraryService {
   private readonly _platformId = inject(PLATFORM_ID);
+  private readonly _document = inject(DOCUMENT);
   private readonly _cacheService = inject(CacheService);
   private readonly _notificationService = inject(NotificationService);
   private readonly _injector = inject(Injector);
@@ -61,16 +64,26 @@ export class LocalLibraryService {
   readonly trackCount = signal(0);
   readonly isActive = signal(false);
   readonly lastError = signal<string | null>(null);
+  readonly backend = signal<ELocalLibraryBackend | null>(null);
 
   private _directoryHandle: FileSystemDirectoryHandle | null = null;
   private readonly _fileHandles = new Map<string, FileSystemFileHandle>();
+  private readonly _files = new Map<string, File>();
   private readonly _coverObjectUrls = new Map<string, string>();
 
   public isSupported(): boolean {
+    return this._isBrowser;
+  }
+
+  public isFileSystemAccessSupported(): boolean {
     return (
       this._isBrowser &&
-      typeof window.showDirectoryPicker === 'function'
+      typeof this._window.showDirectoryPicker === 'function'
     );
+  }
+
+  public usesFileInputFallback(): boolean {
+    return this.isSupported() && !this.isFileSystemAccessSupported();
   }
 
   public async tryRestoreFromCache(): Promise<void> {
@@ -82,6 +95,19 @@ export class LocalLibraryService {
     const meta = this._loadMeta();
 
     if (!meta) {
+      return;
+    }
+
+    if (meta.backend === ELocalLibraryBackend.FILE_INPUT) {
+      this.folderName.set(meta.folderName);
+      this.trackCount.set(meta.trackCount);
+      this.backend.set(meta.backend);
+      this.status.set(ELocalLibraryStatus.IDLE);
+      return;
+    }
+
+    if (!this.isFileSystemAccessSupported()) {
+      this._clearMeta();
       return;
     }
 
@@ -97,6 +123,7 @@ export class LocalLibraryService {
     if (permission && permission !== 'granted') {
       this.folderName.set(meta.folderName);
       this.trackCount.set(meta.trackCount);
+      this.backend.set(meta.backend);
       this.status.set(ELocalLibraryStatus.IDLE);
       this._directoryHandle = handle;
       return;
@@ -113,19 +140,87 @@ export class LocalLibraryService {
   public async pickFolder(): Promise<void> {
     if (!this.isSupported()) {
       this.status.set(ELocalLibraryStatus.UNSUPPORTED);
-      this.lastError.set('Браузер не поддерживает выбор папки');
       return;
     }
 
+    if (this.isFileSystemAccessSupported()) {
+      await this._pickFolderViaFsAccess();
+      return;
+    }
+
+    await this._pickFolderViaFileInput();
+  }
+
+  public async reconnectFolder(): Promise<void> {
+    if (this.isFileSystemAccessSupported()) {
+      await this._reconnectFsAccessFolder();
+      return;
+    }
+
+    await this._pickFolderViaFileInput();
+  }
+
+  public async rescanFolder(): Promise<void> {
+    if (
+      this.backend() === ELocalLibraryBackend.FS_ACCESS &&
+      this._directoryHandle
+    ) {
+      await this._scanAndApply(
+        this._directoryHandle,
+        this.folderName() ?? this._directoryHandle.name,
+        ELocalLibraryBackend.FS_ACCESS,
+      );
+      return;
+    }
+
+    await this._pickFolderViaFileInput();
+  }
+
+  public async disconnect(): Promise<void> {
+    this._revokeCoverUrls();
+    this._fileHandles.clear();
+    this._files.clear();
+    this._directoryHandle = null;
+    this.folderName.set(null);
+    this.trackCount.set(0);
+    this.isActive.set(false);
+    this.backend.set(null);
+    this.lastError.set(null);
+    this.status.set(
+      this.isSupported() ? ELocalLibraryStatus.IDLE : ELocalLibraryStatus.UNSUPPORTED,
+    );
+    this._clearMeta();
+    await clearDirectoryHandle();
+    this._getPlayer().restoreBuiltinPlaylist();
+  }
+
+  public async getAudioBlob(trackId: string): Promise<Blob> {
+    const file = this._files.get(trackId);
+
+    if (file) {
+      return file.slice(0, file.size, file.type || 'audio/mpeg');
+    }
+
+    const handle = this._fileHandles.get(trackId);
+
+    if (!handle) {
+      throw new Error(`Local track not found: ${trackId}`);
+    }
+
+    const handleFile = await handle.getFile();
+    return handleFile.slice(0, handleFile.size, handleFile.type || 'audio/mpeg');
+  }
+
+  private async _pickFolderViaFsAccess(): Promise<void> {
     try {
-      const picker = window.showDirectoryPicker;
+      const picker = this._window.showDirectoryPicker;
 
       if (!picker) {
         this.status.set(ELocalLibraryStatus.UNSUPPORTED);
         return;
       }
 
-      const handle = await picker.call(window, { mode: 'read' });
+      const handle = await picker.call(this._window, { mode: 'read' });
       await this._activateDirectory(handle, handle.name, true);
     } catch (error) {
       if (this._isUserCancellation(error)) {
@@ -138,11 +233,11 @@ export class LocalLibraryService {
     }
   }
 
-  public async reconnectFolder(): Promise<void> {
+  private async _reconnectFsAccessFolder(): Promise<void> {
     const handle = this._directoryHandle ?? (await loadDirectoryHandle());
 
     if (!handle) {
-      await this.pickFolder();
+      await this._pickFolderViaFsAccess();
       return;
     }
 
@@ -157,37 +252,61 @@ export class LocalLibraryService {
     await this._activateDirectory(handle, meta?.folderName ?? handle.name, false);
   }
 
-  public async rescanFolder(): Promise<void> {
-    if (!this._directoryHandle) {
-      return;
-    }
+  private async _pickFolderViaFileInput(): Promise<void> {
+    try {
+      const files = await this._openDirectoryFilePicker();
 
-    await this._scanAndApply(this._directoryHandle, this.folderName() ?? this._directoryHandle.name);
+      if (!files.length) {
+        return;
+      }
+
+      const folderName =
+        this._loadMeta()?.folderName ??
+        this._folderNameFromFiles(files) ??
+        'Локальная папка';
+
+      await this._applyFiles(files, folderName);
+    } catch {
+      this.status.set(ELocalLibraryStatus.ERROR);
+      this.lastError.set('Не удалось открыть папку');
+      this._notifyError('Не удалось открыть папку с музыкой');
+    }
   }
 
-  public async disconnect(): Promise<void> {
-    this._revokeCoverUrls();
-    this._fileHandles.clear();
-    this._directoryHandle = null;
-    this.folderName.set(null);
-    this.trackCount.set(0);
-    this.isActive.set(false);
-    this.lastError.set(null);
-    this.status.set(this.isSupported() ? ELocalLibraryStatus.IDLE : ELocalLibraryStatus.UNSUPPORTED);
-    this._clearMeta();
-    await clearDirectoryHandle();
-    this._getPlayer().restoreBuiltinPlaylist();
+  private _openDirectoryFilePicker(): Promise<File[]> {
+    return new Promise((resolve) => {
+      const input = this._document.createElement('input');
+      input.type = 'file';
+      input.multiple = true;
+      input.setAttribute('webkitdirectory', '');
+      input.setAttribute('directory', '');
+      input.style.display = 'none';
+
+      const finish = (files: File[]) => {
+        input.remove();
+        resolve(files);
+      };
+
+      input.addEventListener('change', () => {
+        const list = input.files ? [...input.files] : [];
+        finish(list.filter((file) => this._isAudioFile(file.name)));
+      });
+
+      this._document.body.appendChild(input);
+      input.click();
+    });
   }
 
-  public async getAudioBlob(trackId: string): Promise<Blob> {
-    const handle = this._fileHandles.get(trackId);
+  private _folderNameFromFiles(files: File[]): string | null {
+    const relativePath = files[0]?.webkitRelativePath;
 
-    if (!handle) {
-      throw new Error(`Local track not found: ${trackId}`);
+    if (!relativePath) {
+      return null;
     }
 
-    const file = await handle.getFile();
-    return file.slice(0, file.size, file.type || 'audio/mpeg');
+    const root = relativePath.split('/')[0];
+
+    return root || null;
   }
 
   private async _activateDirectory(
@@ -203,29 +322,59 @@ export class LocalLibraryService {
       await saveDirectoryHandle(handle);
     }
 
-    await this._scanAndApply(handle, folderName);
+    await this._scanAndApply(handle, folderName, ELocalLibraryBackend.FS_ACCESS);
   }
 
-  private async _scanAndApply(
-    handle: FileSystemDirectoryHandle,
-    folderName: string,
-  ): Promise<void> {
+  private async _applyFiles(files: File[], folderName: string): Promise<void> {
     this.status.set(ELocalLibraryStatus.LOADING);
-
-    const entries = await this._collectAudioFiles(handle);
     this._fileHandles.clear();
+    this._files.clear();
     this._revokeCoverUrls();
 
     const tracks: ITrack[] = [];
 
-    for (const entry of entries) {
-      const track = await this._buildTrack(entry);
+    for (const file of files) {
+      const relativePath = file.webkitRelativePath || file.name;
+      const track = await this._buildTrackFromFile(file, relativePath);
 
       if (track) {
         tracks.push(track);
       }
     }
 
+    await this._finalizePlaylist(tracks, folderName, ELocalLibraryBackend.FILE_INPUT);
+  }
+
+  private async _scanAndApply(
+    handle: FileSystemDirectoryHandle,
+    folderName: string,
+    backend: ELocalLibraryBackend,
+  ): Promise<void> {
+    this.status.set(ELocalLibraryStatus.LOADING);
+
+    const entries = await this._collectAudioFiles(handle);
+    this._fileHandles.clear();
+    this._files.clear();
+    this._revokeCoverUrls();
+
+    const tracks: ITrack[] = [];
+
+    for (const entry of entries) {
+      const track = await this._buildTrackFromHandle(entry);
+
+      if (track) {
+        tracks.push(track);
+      }
+    }
+
+    await this._finalizePlaylist(tracks, folderName, backend);
+  }
+
+  private async _finalizePlaylist(
+    tracks: ITrack[],
+    folderName: string,
+    backend: ELocalLibraryBackend,
+  ): Promise<void> {
     tracks.sort((a, b) => {
       const artist = a.artist.localeCompare(b.artist, 'ru');
       return artist !== 0 ? artist : a.title.localeCompare(b.title, 'ru');
@@ -241,11 +390,13 @@ export class LocalLibraryService {
     this.folderName.set(folderName);
     this.trackCount.set(tracks.length);
     this.isActive.set(true);
+    this.backend.set(backend);
     this.status.set(ELocalLibraryStatus.READY);
     this._saveMeta({
       folderName,
       trackCount: tracks.length,
       scannedAt: Date.now(),
+      backend,
     });
 
     this._getPlayer().applyLocalPlaylist(tracks);
@@ -257,24 +408,37 @@ export class LocalLibraryService {
     });
   }
 
-  private async _buildTrack(entry: ILocalFileEntry): Promise<ITrack | null> {
+  private async _buildTrackFromHandle(
+    entry: ILocalFileEntry,
+  ): Promise<ITrack | null> {
+    const file = await entry.handle.getFile();
+    return this._buildTrackFromFile(file, entry.relativePath, entry.handle);
+  }
+
+  private async _buildTrackFromFile(
+    file: File,
+    relativePath: string,
+    handle?: FileSystemFileHandle,
+  ): Promise<ITrack | null> {
     try {
-      const file = await entry.handle.getFile();
       const buffer = await file.arrayBuffer();
       const metadata = await this._parseMetadata(buffer, file.type || undefined);
 
       const title =
-        metadata.common.title?.trim() ||
-        this._titleFromFileName(entry.handle.name);
+        metadata.common.title?.trim() || this._titleFromFileName(file.name);
       const artist =
         metadata.common.artist?.trim() ||
         metadata.common.artists?.[0]?.trim() ||
         UNKNOWN_ARTIST_LABEL;
       const album = metadata.common.album?.trim() || UNKNOWN_ALBUM_LABEL;
       const genres = this._normalizeGenres(metadata.common.genre);
-      const id = entry.relativePath;
+      const id = relativePath;
 
-      this._fileHandles.set(id, entry.handle);
+      if (handle) {
+        this._fileHandles.set(id, handle);
+      } else {
+        this._files.set(id, file);
+      }
 
       const coverUrl = this._extractCoverUrl(metadata, id);
 
@@ -284,21 +448,26 @@ export class LocalLibraryService {
         artist,
         album,
         genres,
-        localPath: entry.relativePath,
+        localPath: relativePath,
         src: localLibrarySrcFromTrackId(id),
         coverUrl,
         source: 'local-fs',
       };
     } catch {
-      const id = entry.relativePath;
-      this._fileHandles.set(id, entry.handle);
+      const id = relativePath;
+
+      if (handle) {
+        this._fileHandles.set(id, handle);
+      } else {
+        this._files.set(id, file);
+      }
 
       return {
         id,
-        title: this._titleFromFileName(entry.handle.name),
+        title: this._titleFromFileName(file.name),
         artist: UNKNOWN_ARTIST_LABEL,
         album: UNKNOWN_ALBUM_LABEL,
-        localPath: entry.relativePath,
+        localPath: relativePath,
         src: localLibrarySrcFromTrackId(id),
         coverUrl: IMAGE_FALLBACK_URL,
         source: 'local-fs',
@@ -422,7 +591,12 @@ export class LocalLibraryService {
     }
 
     try {
-      return JSON.parse(raw) as ILocalLibraryMeta;
+      const parsed = JSON.parse(raw) as ILocalLibraryMeta;
+
+      return {
+        ...parsed,
+        backend: parsed.backend ?? ELocalLibraryBackend.FS_ACCESS,
+      };
     } catch {
       return null;
     }

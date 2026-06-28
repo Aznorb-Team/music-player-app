@@ -59,11 +59,7 @@
             </p>
           </div>
           <div class="settings-item__actions">
-            @if (!localLibrary.isSupported()) {
-              <p class="settings-item__hint">
-                File System Access API не поддерживается в этом браузере
-              </p>
-            } @else if (localLibrary.isActive()) {
+            @if (localLibrary.isActive()) {
               <p-button
                 label="Обновить"
                 severity="secondary"
@@ -79,18 +75,20 @@
               />
             } @else if (localLibrary.folderName()) {
               <p-button
-                label="Подключить снова"
+                [label]="localLibrary.usesFileInputFallback() ? 'Выбрать папку снова' : 'Подключить снова'"
                 severity="warn"
                 [outlined]="true"
                 [loading]="localLibrary.status() === libraryStatus.LOADING"
                 (onClick)="reconnectMusicFolder()"
               />
-              <p-button
-                label="Выбрать другую"
-                severity="secondary"
-                [text]="true"
-                (onClick)="pickMusicFolder()"
-              />
+              @if (!localLibrary.usesFileInputFallback()) {
+                <p-button
+                  label="Выбрать другую"
+                  severity="secondary"
+                  [text]="true"
+                  (onClick)="pickMusicFolder()"
+                />
+              }
             } @else {
               <p-button
                 label="Выбрать папку"

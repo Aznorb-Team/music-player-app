@@ -94,22 +94,32 @@ export class SettingsComponent {
 
   protected libraryDescription(): string {
     if (!this.localLibrary.isSupported()) {
-      return 'Доступно в Chrome и Edge на компьютере';
+      return 'Доступно только в браузере';
     }
 
     if (this.localLibrary.isActive()) {
       const folder = this.localLibrary.folderName();
       const count = this.localLibrary.trackCount();
-      return folder ? `«${folder}» · ${count} треков` : `${count} треков`;
+      const suffix = this.localLibrary.usesFileInputFallback()
+        ? ' · после перезагрузки выберите папку снова'
+        : '';
+      return folder ? `«${folder}» · ${count} треков${suffix}` : `${count} треков${suffix}`;
     }
 
     const folder = this.localLibrary.folderName();
 
     if (folder) {
-      return `«${folder}» · требуется повторное подключение`;
+      const action = this.localLibrary.usesFileInputFallback()
+        ? 'требуется повторный выбор папки'
+        : 'требуется повторное подключение';
+      return `«${folder}» · ${action}`;
     }
 
-    return 'Воспроизведение MP3 и других форматов с вашего компьютера';
+    if (this.localLibrary.usesFileInputFallback()) {
+      return 'Firefox и Safari: выбор папки через диалог файлов';
+    }
+
+    return 'Chrome и Edge: постоянный доступ к выбранной папке';
   }
 
   protected async clearLocalData(): Promise<void> {

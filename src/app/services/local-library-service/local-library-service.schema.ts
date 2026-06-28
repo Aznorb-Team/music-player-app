@@ -6,10 +6,16 @@ export enum ELocalLibraryStatus {
   UNSUPPORTED = 'unsupported',
 }
 
+export enum ELocalLibraryBackend {
+  FS_ACCESS = 'fs-access',
+  FILE_INPUT = 'file-input',
+}
+
 export interface ILocalLibraryMeta {
   folderName: string;
   trackCount: number;
   scannedAt: number;
+  backend: ELocalLibraryBackend;
 }
 
 export interface ILocalFileEntry {
