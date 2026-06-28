@@ -1,37 +1,60 @@
+:host {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  overflow: hidden;
+
+  ::ng-deep .p-toolbar {
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    padding: 0;
+    border: none;
+    background: transparent;
+  }
+}
+
 .container {
+  width: 100%;
   height: 100%;
   min-height: 0;
+  min-width: 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-direction: row;
-  padding: 0 5rem;
+  gap: 1.5rem;
+  padding: 0 3rem;
+  overflow: hidden;
 
   audio {
     display: none;
   }
 
   @media (orientation: portrait) {
-    padding: 0 0.1rem;
+    gap: 0.75rem;
+    padding: 0 0.75rem;
   }
 
   &__info {
     display: flex;
     gap: 1rem;
-    justify-content: center;
+    justify-content: flex-start;
     align-items: center;
-    flex: 0 1 22%;
+    flex: 0 1 280px;
     min-width: 0;
     max-width: 280px;
+    overflow: hidden;
 
     @media (orientation: portrait) {
       gap: 0.5rem;
-      padding: 0 1.5rem;
-      flex: 0 1 28%;
+      flex: 0 1 140px;
       max-width: 140px;
     }
 
     &__avatar {
+      flex-shrink: 0;
       transition: all 0.5s ease;
 
       @media (orientation: portrait) {
@@ -56,15 +79,18 @@
       display: flex;
       flex-direction: column;
       justify-content: center;
+      gap: 0.25rem;
       padding: 8px 0;
       min-width: 0;
-      flex: 1 1 auto;
+      flex: 1 1 0;
+      width: 0;
       overflow: hidden;
 
       &__name,
       &__author {
         display: block;
-        max-width: 100%;
+        width: 100%;
+        min-width: 0;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -90,8 +116,10 @@
 
   &__controls-track {
     display: flex;
-    gap: 0.5rem;
+    gap: 0.75rem;
     align-items: center;
+    flex-shrink: 0;
+    padding: 0 0.25rem;
 
     &__shuffle--active,
     &__repeat--one {
@@ -117,17 +145,17 @@
 
   &__timeline-container {
     width: 40%;
+    min-width: 0;
+    flex: 1 1 auto;
     display: flex;
     flex-direction: column;
-    padding: 1rem 0 0.5rem 0;
-    gap: 1rem;
+    padding: 1rem 0.5rem 0.5rem;
+    gap: 0.75rem;
 
     @media (orientation: portrait) {
       width: 50%;
-      display: flex;
-      flex-direction: column;
-      padding: 0.5rem 0 0.5rem 1rem;
-      gap: 1rem;
+      padding: 0.5rem 0.25rem;
+      gap: 0.5rem;
     }
 
     &__timeline {
@@ -147,7 +175,9 @@
 
   &__controls-player {
     display: flex;
-    gap: 0.5rem;
+    gap: 0.75rem;
+    flex-shrink: 0;
+    padding: 0 0.25rem;
   }
 }
 
