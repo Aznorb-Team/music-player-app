@@ -12,14 +12,22 @@
     <p-popover #miniCard>
       <mini-card></mini-card>
     </p-popover>
-    <div class="container__info__text-container">
-      <span class="container__info__text-container__name">{{
-        playerService.currentTrack().title
-      }}</span>
-      <span class="container__info__text-container__author">{{
-        playerService.currentTrack().artist
-      }}</span>
-    </div>
+    @if (playerService.currentTrack(); as track) {
+      <div class="container__info__text-container">
+        <span
+          class="container__info__text-container__name"
+          [pTooltip]="track.title"
+          tooltipPosition="top"
+          [showDelay]="400"
+        >{{ track.title }}</span>
+        <span
+          class="container__info__text-container__author"
+          [pTooltip]="track.artist"
+          tooltipPosition="top"
+          [showDelay]="400"
+        >{{ track.artist }}</span>
+      </div>
+    }
   </div>
   <div class="container__controls-track">
     <p-button

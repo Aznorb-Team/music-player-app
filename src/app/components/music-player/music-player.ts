@@ -13,6 +13,7 @@ import {
   ViewChild,
 } from '@angular/core';
 import { Toolbar } from 'primeng/toolbar';
+import { Tooltip } from 'primeng/tooltip';
 import { Avatar } from 'primeng/avatar';
 import { Button } from 'primeng/button';
 import { Popover } from 'primeng/popover';
@@ -35,6 +36,7 @@ import { WaveformService } from '../../services/waveform-service/waveform-servic
   standalone: true,
   imports: [
     Toolbar,
+    Tooltip,
     Avatar,
     Button,
     Slider,

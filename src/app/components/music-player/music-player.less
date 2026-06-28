@@ -20,10 +20,15 @@
     gap: 1rem;
     justify-content: center;
     align-items: center;
+    flex: 0 1 22%;
+    min-width: 0;
+    max-width: 280px;
 
     @media (orientation: portrait) {
       gap: 0.5rem;
       padding: 0 1.5rem;
+      flex: 0 1 28%;
+      max-width: 140px;
     }
 
     &__avatar {
@@ -52,9 +57,31 @@
       flex-direction: column;
       justify-content: center;
       padding: 8px 0;
+      min-width: 0;
+      flex: 1 1 auto;
+      overflow: hidden;
+
+      &__name,
+      &__author {
+        display: block;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      &__name {
+        font-weight: 600;
+      }
+
+      &__author {
+        color: var(--p-text-muted-color);
+        font-size: 0.875rem;
+      }
 
       @media (orientation: portrait) {
-        span {
+        &__name,
+        &__author {
           font-size: 12px;
         }
       }
