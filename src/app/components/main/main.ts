@@ -1,7 +1,6 @@
 import {
   ChangeDetectionStrategy,
   Component,
-  computed,
   inject,
   model,
   ViewChild,
@@ -21,6 +20,7 @@ import {
 } from '../../services/content-service/content-service.schema';
 import { MusicPlayerService } from '../../services/music-player-service/music-player-service';
 import { NewsDetailCardComponent } from './news-detail-card/news-detail-card';
+import { ImageFallbackDirective } from '../../core/directives/image-fallback.directive';
 
 @Component({
   selector: 'main',
@@ -39,6 +39,7 @@ import { NewsDetailCardComponent } from './news-detail-card/news-detail-card';
     NgStyle,
     DatePipe,
     NewsDetailCardComponent,
+    ImageFallbackDirective,
   ],
 })
 export class MainComponent {
@@ -85,15 +86,5 @@ export class MainComponent {
   protected openNewsDetail(news: INewsItem, event: Event): void {
     this.contentService.openNewsDetail(news.id);
     this._newsDetailPopover.toggle(event);
-  }
-
-  protected onImageError(event: Event): void {
-    const img = event.target as HTMLImageElement;
-
-    if (img.src.includes(this.contentService.getImageFallback())) {
-      return;
-    }
-
-    img.src = this.contentService.getImageFallback();
   }
 }

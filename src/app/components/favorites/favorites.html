@@ -23,7 +23,7 @@
                 [src]="track.coverUrl"
                 [alt]="track.title"
                 class="track-row__cover"
-                (error)="onImageError($event)"
+                appImageFallback
               />
               <div class="track-row__info">
                 <p class="track-row__title">{{ track.title }}</p>

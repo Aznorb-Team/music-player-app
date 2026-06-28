@@ -12,7 +12,7 @@ import { ITrack } from '../music-player-service/music-player-service.schema';
 import { NotificationService } from '../notification-service/notification-service';
 import {
   ESeverityNotification,
-  ESummuryNotification,
+  ESummaryNotification,
 } from '../notification-service/notification-service.const';
 
 @Injectable({
@@ -84,7 +84,7 @@ export class FavoritesService {
 
     this._notificationService.showNotification({
       severity: ESeverityNotification.SUCCESS,
-      summary: ESummuryNotification.SUCCESS,
+      summary: ESummaryNotification.SUCCESS,
       detail: isFavorite
         ? `«${track.title}» удалён из избранного`
         : `«${track.title}» добавлен в избранное`,
@@ -111,7 +111,7 @@ export class FavoritesService {
     if (track) {
       this._notificationService.showNotification({
         severity: ESeverityNotification.INFO,
-        summary: ESummuryNotification.INFO,
+        summary: ESummaryNotification.INFO,
         detail: `«${track.title}» удалён из избранного`,
       });
     }

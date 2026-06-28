@@ -17,7 +17,7 @@
                   [src]="album.coverUrl"
                   [alt]="album.name"
                   class="catalog-card__image"
-                  (error)="onImageError($event)"
+                  appImageFallback
                 />
               </div>
               <div class="catalog-card__content">

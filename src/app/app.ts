@@ -19,6 +19,7 @@ import {
   SIDE_MENU_CONFIG_MAIN,
   SIDE_MENU_CONFIG_USER,
 } from './app.consts';
+import { APP_ROUTE_PATHS } from './app.routes.const';
 import { InputGroup } from 'primeng/inputgroup';
 import { InputText } from 'primeng/inputtext';
 import { InputGroupAddon } from 'primeng/inputgroupaddon';
@@ -35,13 +36,10 @@ import {
   ICacheItem,
 } from './services/cache-service/cache-service.schema';
 import { Toast } from 'primeng/toast';
-import { NotificationService } from './services/notification-service/notification-service';
-import {
-  ESeverityNotification,
-  ESummuryNotification,
-} from './services/notification-service/notification-service.const';
 import { Avatar } from 'primeng/avatar';
 import { SearchFilterService } from './services/search-filter-service/search-filter-service';
+import { FavoritesService } from './services/favorites-service/favorites-service';
+import { IMAGE_FALLBACK_URL } from './core/constants/image-fallback.const';
 
 @Component({
   selector: 'app-root',
@@ -69,18 +67,28 @@ import { SearchFilterService } from './services/search-filter-service/search-fil
   styleUrl: './app.less',
 })
 export class App implements OnInit {
-  private _dr = inject(DestroyRef);
-  private _cacheService = inject(CacheService);
-  private _notificationService = inject(NotificationService);
-  private _searchFilter = inject(SearchFilterService);
+  private readonly _dr = inject(DestroyRef);
+  private readonly _cacheService = inject(CacheService);
+  private readonly _searchFilter = inject(SearchFilterService);
+  private readonly _favoritesService = inject(FavoritesService);
 
   protected readonly title = signal('Music Player');
   protected readonly itemsMain = signal<MenuItem[]>([]);
   protected readonly itemsUser = signal<MenuItem[]>([]);
   protected readonly searchFilter = this._searchFilter;
+  protected readonly logoUrl = IMAGE_FALLBACK_URL;
   protected isDarkMode = new FormControl<boolean>(false);
   protected isFullSidebarMenu = new FormControl<boolean>(true);
   protected searchControl = new FormControl('', { nonNullable: true });
+
+  constructor() {
+    this._favoritesService.ensureLoaded();
+
+    effect(() => {
+      this._favoritesService.favoritesCount();
+      this._updateUserMenuItems();
+    });
+  }
 
   public ngOnInit(): void {
     this._initSideMenuConfig();
@@ -105,7 +113,21 @@ export class App implements OnInit {
 
   private _initSideMenuConfig(): void {
     this.itemsMain.set(SIDE_MENU_CONFIG_MAIN);
-    this.itemsUser.set(SIDE_MENU_CONFIG_USER);
+    this._updateUserMenuItems();
+  }
+
+  private _updateUserMenuItems(): void {
+    const count = this._favoritesService.favoritesCount();
+
+    this.itemsUser.set(
+      SIDE_MENU_CONFIG_USER.map((item) => ({
+        ...item,
+        badge:
+          item.routerLink?.[1] === APP_ROUTE_PATHS.FAVORITES && count > 0
+            ? String(count)
+            : undefined,
+      })),
+    );
   }
 
   private _loadStartDate(): void {
@@ -125,23 +147,34 @@ export class App implements OnInit {
     );
 
     if (valueTheme) {
-      this.isDarkMode.setValue(JSON.parse(valueTheme) || false);
+      this.isDarkMode.setValue(this._parseCachedBoolean(valueTheme, false));
     }
   }
 
   private _loadSideBarMenu(): void {
-    const themeItem: ICacheItem = {
+    const sideBarItem: ICacheItem = {
       name: ECacheItemName.SIDE_MENU_OPEN,
     };
 
-    const valueTheme = this._cacheService.useCacheService(
-      themeItem,
+    const valueSideBar = this._cacheService.useCacheService(
+      sideBarItem,
       ETypeCache.LOCAL,
       ETypeActionCache.LOAD,
     );
 
-    if (valueTheme) {
-      this.isFullSidebarMenu.setValue(JSON.parse(valueTheme));
+    if (valueSideBar) {
+      this.isFullSidebarMenu.setValue(
+        this._parseCachedBoolean(valueSideBar, true),
+      );
+    }
+  }
+
+  private _parseCachedBoolean(value: string, fallback: boolean): boolean {
+    try {
+      const parsed: unknown = JSON.parse(value);
+      return typeof parsed === 'boolean' ? parsed : fallback;
+    } catch {
+      return fallback;
     }
   }
 

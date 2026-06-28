@@ -35,7 +35,7 @@
                 [src]="news.imageUrl"
                 [alt]="news.title"
                 class="news-card__image"
-                (error)="onImageError($event)"
+                appImageFallback
               />
               <p-tag
                 [value]="news.category"
@@ -141,7 +141,7 @@
                   [src]="concert.imageUrl"
                   [alt]="concert.artist"
                   class="concert-card__image"
-                  (error)="onImageError($event)"
+                  appImageFallback
                 />
                 <p-tag
                   [value]="concert.status"

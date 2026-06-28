@@ -23,7 +23,7 @@ import { SearchFilterService } from '../search-filter-service/search-filter-serv
 import { NotificationService } from '../notification-service/notification-service';
 import {
   ESeverityNotification,
-  ESummuryNotification,
+  ESummaryNotification,
 } from '../notification-service/notification-service.const';
 
 
@@ -639,7 +639,7 @@ export class MusicPlayerService {
 
       severity: ESeverityNotification.ERROR,
 
-      summary: ESummuryNotification.ERROR,
+      summary: ESummaryNotification.ERROR,
 
       detail: `Не удалось воспроизвести «${track.title}». Файл недоступен.`,
 
@@ -1047,40 +1047,6 @@ export class MusicPlayerService {
   private _buildSequentialOrder(length: number): number[] {
 
     return Array.from({ length }, (_, index) => index);
-
-  }
-
-
-
-  private _buildShuffledOrder(length: number, currentIndex: number): number[] {
-
-    const indices = this._buildSequentialOrder(length);
-
-
-
-    for (let i = indices.length - 1; i > 0; i--) {
-
-      const j = Math.floor(Math.random() * (i + 1));
-
-      [indices[i], indices[j]] = [indices[j], indices[i]];
-
-    }
-
-
-
-    const currentPosition = indices.indexOf(currentIndex);
-
-    if (currentPosition > 0) {
-
-      indices.splice(currentPosition, 1);
-
-      indices.unshift(currentIndex);
-
-    }
-
-
-
-    return indices;
 
   }
 

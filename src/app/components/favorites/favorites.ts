@@ -3,7 +3,7 @@ import { Card } from 'primeng/card';
 import { Button } from 'primeng/button';
 import { FavoritesService } from '../../services/favorites-service/favorites-service';
 import { MusicPlayerService } from '../../services/music-player-service/music-player-service';
-import { ContentService } from '../../services/content-service/content-service';
+import { ImageFallbackDirective } from '../../core/directives/image-fallback.directive';
 import {
   EQueueContext,
   ITrack,
@@ -14,12 +14,11 @@ import {
   templateUrl: './favorites.html',
   styleUrl: './favorites.less',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Card, Button],
+  imports: [Card, Button, ImageFallbackDirective],
 })
 export class FavoritesComponent {
   private readonly _musicPlayerService = inject(MusicPlayerService);
   protected readonly favoritesService = inject(FavoritesService);
-  protected readonly contentService = inject(ContentService);
 
   constructor() {
     this.favoritesService.ensureLoaded();
@@ -54,15 +53,5 @@ export class FavoritesComponent {
 
   protected trackButtonIcon(track: ITrack): string {
     return this.isPlayingTrack(track) ? 'pi pi-pause' : 'pi pi-play';
-  }
-
-  protected onImageError(event: Event): void {
-    const img = event.target as HTMLImageElement;
-
-    if (img.src.includes(this.contentService.getImageFallback())) {
-      return;
-    }
-
-    img.src = this.contentService.getImageFallback();
   }
 }

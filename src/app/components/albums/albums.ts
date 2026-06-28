@@ -2,8 +2,8 @@ import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/c
 import { Card } from 'primeng/card';
 import { Button } from 'primeng/button';
 import { MusicPlayerService } from '../../services/music-player-service/music-player-service';
-import { ContentService } from '../../services/content-service/content-service';
 import { SearchFilterService } from '../../services/search-filter-service/search-filter-service';
+import { ImageFallbackDirective } from '../../core/directives/image-fallback.directive';
 import {
   EQueueContext,
   ITrack,
@@ -22,11 +22,10 @@ interface IAlbumSummary {
   templateUrl: './albums.html',
   styleUrl: './albums.less',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Card, Button],
+  imports: [Card, Button, ImageFallbackDirective],
 })
 export class AlbumsComponent {
   private readonly _musicPlayerService = inject(MusicPlayerService);
-  protected readonly contentService = inject(ContentService);
   protected readonly searchFilter = inject(SearchFilterService);
 
   protected readonly albums = computed(() => {
@@ -75,15 +74,5 @@ export class AlbumsComponent {
       albumTracks,
       EQueueContext.ALBUM,
     );
-  }
-
-  protected onImageError(event: Event): void {
-    const img = event.target as HTMLImageElement;
-
-    if (img.src.includes(this.contentService.getImageFallback())) {
-      return;
-    }
-
-    img.src = this.contentService.getImageFallback();
   }
 }

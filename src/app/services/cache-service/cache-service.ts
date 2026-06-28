@@ -8,7 +8,7 @@ import { WINDOW } from '../../core/window/window-injectable';
 import { NotificationService } from '../notification-service/notification-service';
 import {
   ESeverityNotification,
-  ESummuryNotification,
+  ESummaryNotification,
 } from '../notification-service/notification-service.const';
 
 @Injectable({
@@ -62,7 +62,7 @@ export class CacheService {
     } else {
       this._notificationService.showNotification({
         severity: ESeverityNotification.ERROR,
-        summary: ESummuryNotification.ERROR,
+        summary: ESummaryNotification.ERROR,
         detail: 'Ошибка при сохранении данных в локальное хранилище!',
       });
     }
@@ -74,7 +74,7 @@ export class CacheService {
     } else {
       this._notificationService.showNotification({
         severity: ESeverityNotification.ERROR,
-        summary: ESummuryNotification.ERROR,
+        summary: ESummaryNotification.ERROR,
         detail: 'Ошибка при сохранении данных в сессионное хранилище!',
       });
     }

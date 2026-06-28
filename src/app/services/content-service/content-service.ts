@@ -4,7 +4,6 @@ import {
   CONCERTS,
   NEWS_CAROUSEL_RESPONSIVE_OPTIONS,
   NEWS_ITEMS,
-  ARTIST_IMAGE_URLS,
 } from './content-service.const';
 import { EConcertStatus, IConcert, INewsItem } from './content-service.schema';
 import { SearchFilterService } from '../search-filter-service/search-filter-service';
@@ -100,14 +99,6 @@ export class ContentService {
     return items;
   });
 
-  readonly hasActiveContentFilters = computed(
-    () =>
-      !!this.selectedCity() ||
-      !!this.selectedConcertStatus() ||
-      !!this.selectedNewsCategory() ||
-      !!this.selectedGenreId(),
-  );
-
   public setSelectedCity(city: string | undefined): void {
     this.selectedCity.set(city);
   }
@@ -170,9 +161,5 @@ export class ContentService {
       currency: 'RUB',
       maximumFractionDigits: 0,
     }).format(priceRub);
-  }
-
-  public getImageFallback(): string {
-    return ARTIST_IMAGE_URLS.fallback;
   }
 }

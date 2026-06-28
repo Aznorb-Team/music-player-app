@@ -7,7 +7,7 @@ export enum ESeverityNotification {
   SECONDARY = 'secondary',
 }
 
-export enum ESummuryNotification {
+export enum ESummaryNotification {
   SUCCESS = 'Success',
   INFO = 'Info',
   WARN = 'Warn',

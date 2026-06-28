@@ -1,10 +1,10 @@
 import {
   ESeverityNotification,
-  ESummuryNotification,
+  ESummaryNotification,
 } from './notification-service.const';
 
 export interface INotification {
   severity: ESeverityNotification;
-  summary: ESummuryNotification;
+  summary: ESummaryNotification;
   detail: string;
 }

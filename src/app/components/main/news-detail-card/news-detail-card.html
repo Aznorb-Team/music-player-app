@@ -5,7 +5,7 @@
         [alt]="news.title"
         class="news-detail-card__image"
         [src]="news.imageUrl"
-        (error)="onImageError($event)"
+        appImageFallback
       />
       <p-tag
         [value]="news.category"

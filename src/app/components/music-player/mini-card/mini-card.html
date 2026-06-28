@@ -5,7 +5,7 @@
         [alt]="track.title"
         class="mini-card-container__image"
         [src]="track.coverUrl"
-        (error)="onImageError($event)"
+        appImageFallback
       />
       @if (track.album) {
         <p-tag

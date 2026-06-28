@@ -10,13 +10,14 @@ import {
   ARTIST_GENRE_MAP,
   GENRE_ITEMS,
 } from '../genres/genres.const';
+import { ImageFallbackDirective } from '../../core/directives/image-fallback.directive';
 
 @Component({
   selector: 'app-artists',
   templateUrl: './artists.html',
   styleUrl: './artists.less',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Card, Button, Select, FormsModule],
+  imports: [Card, Button, Select, FormsModule, ImageFallbackDirective],
 })
 export class ArtistsComponent {
   private readonly _musicPlayerService = inject(MusicPlayerService);
@@ -75,15 +76,5 @@ export class ArtistsComponent {
 
   protected playArtist(artist: string): void {
     this._musicPlayerService.playByArtist(artist);
-  }
-
-  protected onImageError(event: Event): void {
-    const img = event.target as HTMLImageElement;
-
-    if (img.src.includes(this.contentService.getImageFallback())) {
-      return;
-    }
-
-    img.src = this.contentService.getImageFallback();
   }
 }

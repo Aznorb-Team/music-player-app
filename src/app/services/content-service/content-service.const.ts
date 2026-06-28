@@ -1,3 +1,4 @@
+import { IMAGE_FALLBACK_URL } from '../../core/constants/image-fallback.const';
 import {
   EConcertStatus,
   IConcert,
@@ -11,7 +12,7 @@ export const ARTIST_IMAGE_URLS = {
   motionlessInWhite: '/images/artists/motionless-in-white-linkfire.jpg',
   badOmens: '/images/artists/bad-omens.jpg',
   bringMeTheHorizon: '/images/artists/bring-me-the-horizon.jpg',
-  fallback: '/favicon.jpg',
+  fallback: IMAGE_FALLBACK_URL,
 } as const;
 
 /** Курс для перевода € → ₽ (примерный) */
