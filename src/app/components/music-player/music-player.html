@@ -1,5 +1,6 @@
 <p-toolbar class="container">
-  <audio #audioPlayer preload="metadata"></audio>
+  <audio #audioPrimary preload="auto"></audio>
+  <audio #audioSecondary preload="auto"></audio>
   <div class="container__info">
     <p-avatar
       class="container__info__avatar"
@@ -69,11 +70,12 @@
       (onClick)="playerService.cycleRepeatMode()"
     />
   </div>
-  <form class="container__timeline-container">
+  <div class="container__timeline-container">
     <player-progress-bar
       class="container__timeline-container__timeline"
       [progress]="progressPercent()"
       [duration]="playerService.duration()"
+      [peaks]="waveformPeaks()"
       (seekStart)="onSeekStart()"
       (seekEnd)="onSeekEnd($event)"
     />
@@ -81,7 +83,7 @@
       <span>{{ playerService.currentTime() | time }}</span>
       <span>{{ playerService.duration() | time }}</span>
     </div>
-  </form>
+  </div>
   <div class="container__controls-player">
     <p-button
       [icon]="isCurrentTrackFavorite() ? 'pi pi-heart-fill' : 'pi pi-heart'"

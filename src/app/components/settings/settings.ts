@@ -7,6 +7,10 @@ import { FormsModule } from '@angular/forms';
 import { MusicPlayerService } from '../../services/music-player-service/music-player-service';
 import { AppSettingsService } from '../../services/app-settings-service/app-settings-service';
 import { ERepeatMode } from '../../services/music-player-service/music-player-service.schema';
+import {
+  CROSSFADE_DURATION_MAX_SEC,
+  CROSSFADE_DURATION_MIN_SEC,
+} from '../../services/music-player-service/music-player-playback.const';
 import { FavoritesService } from '../../services/favorites-service/favorites-service';
 import { AuthService } from '../../services/auth-service/auth-service';
 import { NotificationService } from '../../services/notification-service/notification-service';
@@ -30,6 +34,8 @@ export class SettingsComponent {
   private readonly _notificationService = inject(NotificationService);
 
   protected readonly repeatMode = ERepeatMode;
+  protected readonly crossfadeMinSec = CROSSFADE_DURATION_MIN_SEC;
+  protected readonly crossfadeMaxSec = CROSSFADE_DURATION_MAX_SEC;
 
   constructor() {
     this.favoritesService.ensureLoaded();
@@ -56,6 +62,14 @@ export class SettingsComponent {
 
   protected setRepeatMode(mode: ERepeatMode): void {
     this.musicPlayerService.setRepeatMode(mode);
+  }
+
+  protected onCrossfadeChange(enabled: boolean): void {
+    this.musicPlayerService.setCrossfadeEnabled(enabled);
+  }
+
+  protected onCrossfadeDurationChange(seconds: number): void {
+    this.musicPlayerService.setCrossfadeDurationSec(seconds);
   }
 
   protected clearLocalData(): void {

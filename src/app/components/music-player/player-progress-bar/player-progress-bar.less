@@ -1,21 +1,44 @@
 .progress {
   position: relative;
   width: 100%;
-  height: 6px;
-  border-radius: 999px;
-  background: var(--p-content-border-color);
+  height: 40px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--p-content-border-color) 35%, transparent);
   cursor: pointer;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
 
-  &:hover {
-    height: 8px;
+  &__waveform {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    pointer-events: none;
   }
 
-  &__fill {
+  &__played-clip {
+    position: absolute;
+    top: 0;
+    left: 0;
     height: 100%;
-    border-radius: inherit;
-    background: var(--p-button-outlined-warn-color);
+    overflow: hidden;
     pointer-events: none;
-    transition: width 0.05s linear;
+    z-index: 0;
+  }
+
+  &__playhead {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    margin-left: -1px;
+    background: var(--p-button-outlined-warn-color);
+    box-shadow: 0 0 6px color-mix(in srgb, var(--p-button-outlined-warn-color) 60%, transparent);
+    pointer-events: none;
+    z-index: 1;
+    will-change: left;
   }
 
   &__tooltip {
@@ -30,5 +53,6 @@
     border: 1px solid var(--p-content-border-color);
     box-shadow: 0 2px 8px rgb(0 0 0 / 20%);
     pointer-events: none;
+    z-index: 2;
   }
 }

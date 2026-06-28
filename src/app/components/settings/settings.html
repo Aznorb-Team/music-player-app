@@ -64,6 +64,38 @@
           />
         </div>
 
+        <div class="settings-item">
+          <div class="settings-item__info">
+            <p class="settings-item__title">Кроссфейд</p>
+            <p class="settings-item__description">
+              Плавный переход между треками
+            </p>
+          </div>
+          <p-toggleswitch
+            [ngModel]="musicPlayerService.crossfadeEnabled()"
+            (ngModelChange)="onCrossfadeChange($event)"
+          />
+        </div>
+
+        @if (musicPlayerService.crossfadeEnabled()) {
+          <div class="settings-item settings-item--column">
+            <div class="settings-item__info">
+              <p class="settings-item__title">Длительность кроссфейда</p>
+              <p class="settings-item__description">
+                {{ musicPlayerService.crossfadeDurationSec() }} сек
+              </p>
+            </div>
+            <p-slider
+              [ngModel]="musicPlayerService.crossfadeDurationSec()"
+              (ngModelChange)="onCrossfadeDurationChange($event)"
+              [min]="crossfadeMinSec"
+              [max]="crossfadeMaxSec"
+              [step]="1"
+              class="settings-item__slider"
+            />
+          </div>
+        }
+
         <div class="settings-item settings-item--column">
           <div class="settings-item__info">
             <p class="settings-item__title">Повтор</p>

@@ -199,4 +199,19 @@ describe('MusicPlayerService', () => {
     service.setVolume(-10);
     expect(service.volume()).toBe(0);
   });
+
+  it('should toggle crossfade preference', () => {
+    expect(service.crossfadeEnabled()).toBeTrue();
+
+    service.setCrossfadeEnabled(false);
+    expect(service.crossfadeEnabled()).toBeFalse();
+  });
+
+  it('should clamp crossfade duration', () => {
+    service.setCrossfadeDurationSec(99);
+    expect(service.crossfadeDurationSec()).toBe(8);
+
+    service.setCrossfadeDurationSec(0);
+    expect(service.crossfadeDurationSec()).toBe(1);
+  });
 });

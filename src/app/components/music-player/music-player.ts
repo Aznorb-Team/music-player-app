@@ -9,6 +9,7 @@ import {
   inject,
   OnDestroy,
   OnInit,
+  signal,
   ViewChild,
 } from '@angular/core';
 import { Toolbar } from 'primeng/toolbar';
@@ -25,6 +26,7 @@ import { MusicPlayerService } from '../../services/music-player-service/music-pl
 import { ERepeatMode } from '../../services/music-player-service/music-player-service.schema';
 import { FavoritesService } from '../../services/favorites-service/favorites-service';
 import { PlayerHotkeysService } from '../../services/player-hotkeys-service/player-hotkeys-service';
+import { WaveformService } from '../../services/waveform-service/waveform-service';
 
 @Component({
   selector: 'music-player',
@@ -48,9 +50,14 @@ import { PlayerHotkeysService } from '../../services/player-hotkeys-service/play
 export class MusicPlayerComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly _dr = inject(DestroyRef);
   private readonly _hotkeys = inject(PlayerHotkeysService);
+  private readonly _waveformService = inject(WaveformService);
   protected readonly playerService = inject(MusicPlayerService);
   protected readonly favoritesService = inject(FavoritesService);
   protected readonly repeatMode = ERepeatMode;
+
+  protected readonly waveformPeaks = signal<number[]>([]);
+
+  private _waveformLoadToken = 0;
 
   protected volumeForm = new FormControl<number>(100);
 
@@ -70,10 +77,17 @@ export class MusicPlayerComponent implements OnInit, AfterViewInit, OnDestroy {
         this.volumeForm.setValue(volume, { emitEvent: false });
       }
     });
-  }
 
-  @ViewChild('audioPlayer', { static: true })
-  private _audioPlayerRef?: ElementRef<HTMLAudioElement>;
+    effect(() => {
+      const src = this.playerService.currentTrack().src;
+      void this._loadWaveform(src);
+    });
+  }
+  @ViewChild('audioPrimary', { static: true })
+  private _audioPrimaryRef?: ElementRef<HTMLAudioElement>;
+
+  @ViewChild('audioSecondary', { static: true })
+  private _audioSecondaryRef?: ElementRef<HTMLAudioElement>;
 
   public ngOnInit(): void {
     this.favoritesService.ensureLoaded();
@@ -82,9 +96,10 @@ export class MusicPlayerComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   public ngAfterViewInit(): void {
-    if (this._audioPlayerRef) {
-      this.playerService.registerAudioElement(
-        this._audioPlayerRef.nativeElement,
+    if (this._audioPrimaryRef && this._audioSecondaryRef) {
+      this.playerService.registerAudioElements(
+        this._audioPrimaryRef.nativeElement,
+        this._audioSecondaryRef.nativeElement,
       );
       this.volumeForm.setValue(this.playerService.volume(), {
         emitEvent: false,
@@ -147,5 +162,18 @@ export class MusicPlayerComponent implements OnInit, AfterViewInit, OnDestroy {
       .subscribe((value) => {
         this.playerService.setVolume(value ?? 0);
       });
+  }
+
+  private async _loadWaveform(src: string): Promise<void> {
+    const token = ++this._waveformLoadToken;
+    this.waveformPeaks.set([]);
+
+    const peaks = await this._waveformService.getPeaks(src);
+
+    if (token !== this._waveformLoadToken) {
+      return;
+    }
+
+    this.waveformPeaks.set(peaks);
   }
 }

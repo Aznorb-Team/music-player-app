@@ -1,11 +1,25 @@
 <div
+  #track
   class="progress"
-  (click)="onTrackClick($event)"
-  (mousemove)="onTrackMove($event)"
-  (mouseleave)="hidePreview()"
-  (mousedown)="onDragStart($event)"
+  (pointerdown)="onPointerDown($event)"
+  (pointermove)="onPointerMove($event)"
+  (pointerup)="onPointerUp($event)"
+  (pointercancel)="onPointerCancel()"
+  (pointerleave)="onPointerLeave($event)"
 >
-  <div class="progress__fill" [style.width.%]="progress()"></div>
+  <canvas
+    #waveformBase
+    class="progress__waveform progress__waveform--base"
+    aria-hidden="true"
+  ></canvas>
+  <div class="progress__played-clip" [style.width.%]="progress()">
+    <canvas
+      #waveformPlayed
+      class="progress__waveform progress__waveform--played"
+      aria-hidden="true"
+    ></canvas>
+  </div>
+  <div class="progress__playhead" [style.left.%]="progress()"></div>
   @if (previewVisible()) {
     <div class="progress__tooltip" [style.left.%]="previewPercent()">
       {{ previewTime() | time }}

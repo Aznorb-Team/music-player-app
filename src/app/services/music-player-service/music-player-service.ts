@@ -18,6 +18,14 @@ import { ECacheItemName } from '../../app.consts';
 
 import { DEFAULT_PLAYLIST } from './music-player-service.const';
 import { ARTIST_GENRE_MAP } from '../../components/genres/genres.const';
+import {
+  CROSSFADE_DURATION_DEFAULT_SEC,
+  CROSSFADE_DURATION_MAX_SEC,
+  CROSSFADE_DURATION_MIN_SEC,
+  MIN_POSITION_TO_SAVE_SEC,
+  POSITION_SAVE_END_THRESHOLD,
+  POSITION_SAVE_INTERVAL_MS,
+} from './music-player-playback.const';
 
 import { ERepeatMode, EQueueContext, ITrack, QUEUE_CONTEXT_LABELS } from './music-player-service.schema';
 import { SearchFilterService } from '../search-filter-service/search-filter-service';
@@ -64,9 +72,15 @@ export class MusicPlayerService {
 
   readonly isDragging = signal(false);
 
+  readonly isTrackLoading = signal(false);
+
   readonly shuffle = signal(false);
 
   readonly repeatMode = signal(ERepeatMode.OFF);
+
+  readonly crossfadeEnabled = signal(true);
+
+  readonly crossfadeDurationSec = signal(CROSSFADE_DURATION_DEFAULT_SEC);
 
   readonly queuePosition = signal(0);
   readonly queueContext = signal<EQueueContext>(EQueueContext.FULL);
@@ -116,63 +130,65 @@ export class MusicPlayerService {
 
 
 
-  private _audio: HTMLAudioElement | null = null;
-  private _audioWithListeners: HTMLAudioElement | null = null;
+  private _audioElements: [HTMLAudioElement, HTMLAudioElement] | null = null;
+  private _activeSlot: 0 | 1 = 0;
+  private readonly _audioWithListeners = new Set<HTMLAudioElement>();
   private _loadToken = 0;
+  private _crossfadeFrameId: number | null = null;
   private _preferencesLoaded = false;
   private _volumeBeforeMute = 100;
   private _mediaSessionReady = false;
+  private _positionsCache: Record<string, number> = {};
+  private _lastPositionSaveAt = 0;
+  private _pendingSeekTime: number | null = null;
 
-  public registerAudioElement(audio: HTMLAudioElement): void {
+  public registerAudioElements(
+    primary: HTMLAudioElement,
+    secondary: HTMLAudioElement,
+  ): void {
     if (!this._isBrowser) {
       return;
     }
 
-    if (this._audio === audio) {
+    if (
+      this._audioElements?.[0] === primary &&
+      this._audioElements?.[1] === secondary
+    ) {
       return;
     }
 
-    this._audio = audio;
-    this._attachAudioListeners();
+    this._audioElements = [primary, secondary];
+    this._attachAudioListeners(primary, 0);
+    this._attachAudioListeners(secondary, 1);
     this._setupMediaSession();
     this._loadVolumeFromCache();
     this._loadPlaybackPreferences();
-    void this._applyTrackSource(false);
+    this._loadPositionsFromCache();
+    void this._restoreLastPlayback();
   }
 
 
 
   public play(): void {
+    const audio = this._getActiveAudio();
 
-    if (!this._audio || !this._isBrowser) {
-
+    if (!audio || !this._isBrowser) {
       return;
-
     }
 
-
-
-    void this._safePlay();
-
+    void this._safePlay(audio);
   }
 
-
-
   public pause(): void {
-
-    if (!this._audio) {
-
+    if (!this._audioElements) {
       return;
-
     }
 
-
-
-    this._audio.pause();
-
+    this._cancelCrossfade();
+    this._audioElements[this._activeSlot].pause();
     this.isPlaying.set(false);
+    this._persistCurrentPosition();
     this._updateMediaSessionPlaybackState();
-
   }
 
 
@@ -202,21 +218,15 @@ export class MusicPlayerService {
 
 
   public previous(): void {
+    const audio = this._getActiveAudio();
 
     if (
-
-      this._audio &&
-
-      this._audio.currentTime > PREVIOUS_TRACK_THRESHOLD_SEC &&
-
+      audio &&
+      audio.currentTime > PREVIOUS_TRACK_THRESHOLD_SEC &&
       this.repeatMode() !== ERepeatMode.ONE
-
     ) {
-
       this.reset();
-
       return;
-
     }
 
 
@@ -229,7 +239,7 @@ export class MusicPlayerService {
 
     if (position > 0) {
 
-      this._goToQueuePosition(position - 1, true);
+      this._goToQueuePosition(position - 1, true, false);
 
       return;
 
@@ -239,7 +249,7 @@ export class MusicPlayerService {
 
     if (this.repeatMode() === ERepeatMode.ALL && order.length > 1) {
 
-      this._goToQueuePosition(order.length - 1, true);
+      this._goToQueuePosition(order.length - 1, true, false);
 
       return;
 
@@ -254,37 +264,34 @@ export class MusicPlayerService {
 
 
   public reset(): void {
+    const audio = this._getActiveAudio();
 
-    if (!this._audio) {
-
+    if (!audio) {
       return;
-
     }
 
-
-
-    this._audio.currentTime = 0;
-
-    void this._safePlay();
-
+    audio.currentTime = 0;
+    this.currentTime.set(0);
+    this._clearSavedPosition(this.currentTrack().id);
+    void this._safePlay(audio);
   }
 
-
-
   public seek(progress: number): void {
+    const audio = this._getActiveAudio();
 
-    if (!this._audio || !this._audio.duration) {
-
+    if (!audio) {
       return;
-
     }
 
+    const duration = audio.duration;
 
+    if (!Number.isFinite(duration) || duration <= 0) {
+      return;
+    }
 
-    this._audio.currentTime = (progress / 100) * this._audio.duration;
-
+    this.duration.set(duration);
     this.isDragging.set(false);
-
+    this._seekToTime(audio, (progress / 100) * duration);
   }
 
 
@@ -305,10 +312,9 @@ export class MusicPlayerService {
 
 
 
-    if (this._audio) {
-
-      this._audio.volume = volume / 100;
-
+    if (this._audioElements) {
+      this._applyVolumeToSlot(this._activeSlot, 1);
+      this._applyVolumeToSlot(this._activeSlot === 0 ? 1 : 0, 0);
     }
 
 
@@ -408,7 +414,10 @@ export class MusicPlayerService {
 
     if (this.currentIndex() === index) {
       if (!this.isPlaying()) {
-        void this._safePlay();
+        const audio = this._getActiveAudio();
+        if (audio) {
+          void this._safePlay(audio);
+        }
       }
 
       return;
@@ -437,15 +446,36 @@ export class MusicPlayerService {
     }
   }
 
+  public setCrossfadeEnabled(enabled: boolean): void {
+    this.crossfadeEnabled.set(enabled);
+    this._persistCrossfadePreferences();
+  }
+
+  public setCrossfadeDurationSec(seconds: number): void {
+    const value = Math.min(
+      CROSSFADE_DURATION_MAX_SEC,
+      Math.max(CROSSFADE_DURATION_MIN_SEC, Math.round(seconds)),
+    );
+    this.crossfadeDurationSec.set(value);
+    this._persistCrossfadePreferences();
+  }
+
   public seekBySeconds(delta: number): void {
-    if (!this._audio) {
+    const audio = this._getActiveAudio();
+
+    if (!audio) {
       return;
     }
 
-    const duration = this._audio.duration || 0;
-    const next = Math.min(duration, Math.max(0, this._audio.currentTime + delta));
-    this._audio.currentTime = next;
-    this.currentTime.set(next);
+    const duration = audio.duration || 0;
+
+    if (!Number.isFinite(duration) || duration <= 0) {
+      return;
+    }
+
+    const baseTime = this._pendingSeekTime ?? audio.currentTime;
+    const next = Math.min(duration, Math.max(0, baseTime + delta));
+    this._seekToTime(audio, next);
   }
 
   public adjustVolume(delta: number): void {
@@ -483,13 +513,17 @@ export class MusicPlayerService {
 
 
 
-    this._goToQueuePosition(position, true);
+    this._goToQueuePosition(position, true, false);
 
   }
 
 
 
-  private _goToQueuePosition(position: number, shouldPlay: boolean): void {
+  private _goToQueuePosition(
+    position: number,
+    shouldPlay: boolean,
+    allowCrossfade = false,
+  ): void {
 
     const order = this._playOrder();
 
@@ -505,7 +539,7 @@ export class MusicPlayerService {
 
     this.queuePosition.set(position);
 
-    this._selectTrack(order[position], shouldPlay, false);
+    this._selectTrack(order[position], shouldPlay, false, allowCrossfade);
 
   }
 
@@ -519,6 +553,10 @@ export class MusicPlayerService {
 
     syncQueuePosition = true,
 
+    allowCrossfade = false,
+
+    restorePosition = false,
+
   ): void {
 
     const tracks = this.playlist();
@@ -530,6 +568,10 @@ export class MusicPlayerService {
     }
 
 
+
+    const previousIndex = this.currentIndex();
+
+    const isSameTrack = index === previousIndex;
 
     if (syncQueuePosition) {
 
@@ -550,7 +592,24 @@ export class MusicPlayerService {
     this.currentTrack.set(tracks[index]);
 
     this._updateMediaSessionMetadata();
-    void this._applyTrackSource(shouldPlay);
+
+    if (!isSameTrack) {
+      this.currentTime.set(0);
+      this.duration.set(0);
+    }
+
+    const wasPlaying = this.isPlaying();
+    const useCrossfade =
+      allowCrossfade &&
+      shouldPlay &&
+      wasPlaying &&
+      !isSameTrack &&
+      this.crossfadeEnabled();
+
+    void this._applyTrackSource(shouldPlay, {
+      useCrossfade,
+      restorePosition: restorePosition && !isSameTrack,
+    });
 
   }
 
@@ -576,7 +635,7 @@ export class MusicPlayerService {
 
     if (position < order.length - 1) {
 
-      this._goToQueuePosition(position + 1, true);
+      this._goToQueuePosition(position + 1, true, fromTrackEnd);
 
       return;
 
@@ -586,7 +645,7 @@ export class MusicPlayerService {
 
     if (this.repeatMode() === ERepeatMode.ALL) {
 
-      this._goToQueuePosition(0, true);
+      this._goToQueuePosition(0, true, fromTrackEnd);
 
       return;
 
@@ -610,73 +669,77 @@ export class MusicPlayerService {
 
 
 
-  private async _applyTrackSource(shouldPlay: boolean): Promise<void> {
-
-    if (!this._audio || !this._isBrowser) {
-
+  private async _applyTrackSource(
+    shouldPlay: boolean,
+    options: { useCrossfade?: boolean; restorePosition?: boolean } = {},
+  ): Promise<void> {
+    if (!this._audioElements || !this._isBrowser) {
       return;
-
     }
 
-
-
+    const useCrossfade = options.useCrossfade === true;
+    const restorePosition = options.restorePosition !== false;
     const token = ++this._loadToken;
+    this._cancelCrossfade();
+    this._clearPendingSeek();
+    this._beginTrackLoading();
 
     const track = this.currentTrack();
+    const activeSlot = this._activeSlot;
+    const activeAudio = this._audioElements[activeSlot];
 
+    this._persistCurrentPosition();
 
-
-    this._audio.pause();
-
-    this.isPlaying.set(false);
-
-    this.currentTime.set(0);
-
-    this.duration.set(0);
-
-
-
-    this._audio.src = track.src;
-
-    this._audio.load();
-
-
-
-    if (!shouldPlay) {
-
+    if (useCrossfade && shouldPlay) {
+      await this._crossfadeToTrack(token, track, restorePosition);
       return;
-
     }
 
+    activeAudio.pause();
+    this.isPlaying.set(false);
+    this.duration.set(0);
+    this.currentTime.set(0);
 
+    activeAudio.src = track.src;
+    activeAudio.load();
 
     try {
-
-      await this._waitForCanPlay(token);
+      await this._waitForCanPlay(token, activeAudio);
 
       if (token !== this._loadToken) {
-
         return;
-
       }
 
+      if (restorePosition) {
+        this._applySavedPosition(activeAudio, track.id);
+      } else {
+        activeAudio.currentTime = 0;
+        this.currentTime.set(0);
+      }
 
+      if (activeAudio.duration) {
+        this.duration.set(activeAudio.duration);
+      }
 
-      await this._safePlay();
+      this._endTrackLoading(token);
 
+      if (!shouldPlay) {
+        return;
+      }
+
+      await this._safePlay(activeAudio);
     } catch {
+      this._endTrackLoading(token);
 
       if (token === this._loadToken) {
-
         this.isPlaying.set(false);
         this._updateMediaSessionPlaybackState();
 
-        this._notifyAudioError(track);
-
+        if (shouldPlay) {
+          this._notifyAudioError(track);
+        }
       }
-
     }
-
   }
 
 
@@ -697,11 +760,14 @@ export class MusicPlayerService {
 
 
 
-  private _waitForCanPlay(token: number): Promise<void> {
+  private _waitForCanPlay(
+    token: number,
+    audio: HTMLAudioElement,
+  ): Promise<void> {
 
     return new Promise((resolve, reject) => {
 
-      if (!this._audio || token !== this._loadToken) {
+      if (token !== this._loadToken) {
 
         resolve();
 
@@ -711,7 +777,7 @@ export class MusicPlayerService {
 
 
 
-      if (this._audio.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) {
+      if (audio.readyState >= HTMLMediaElement.HAVE_METADATA) {
 
         resolve();
 
@@ -721,7 +787,7 @@ export class MusicPlayerService {
 
 
 
-      const onCanPlay = () => {
+      const onLoadedMetadata = () => {
 
         cleanup();
 
@@ -743,17 +809,17 @@ export class MusicPlayerService {
 
       const cleanup = () => {
 
-        this._audio?.removeEventListener('canplay', onCanPlay);
+        audio.removeEventListener('loadedmetadata', onLoadedMetadata);
 
-        this._audio?.removeEventListener('error', onError);
+        audio.removeEventListener('error', onError);
 
       };
 
 
 
-      this._audio.addEventListener('canplay', onCanPlay);
+      audio.addEventListener('loadedmetadata', onLoadedMetadata);
 
-      this._audio.addEventListener('error', onError);
+      audio.addEventListener('error', onError);
 
     });
 
@@ -761,19 +827,11 @@ export class MusicPlayerService {
 
 
 
-  private async _safePlay(): Promise<void> {
-
-    if (!this._audio) {
-
-      return;
-
-    }
-
-
+  private async _safePlay(audio: HTMLAudioElement): Promise<void> {
 
     try {
 
-      await this._audio.play();
+      await audio.play();
 
       this.isPlaying.set(true);
       this._updateMediaSessionPlaybackState();
@@ -783,7 +841,7 @@ export class MusicPlayerService {
       this.isPlaying.set(false);
       this._updateMediaSessionPlaybackState();
 
-      if (this._audio.error) {
+      if (audio.error) {
 
         this._notifyAudioError(this.currentTrack());
 
@@ -803,55 +861,96 @@ export class MusicPlayerService {
 
 
 
-  private _attachAudioListeners(): void {
-    if (!this._audio || this._audioWithListeners === this._audio) {
+  private _attachAudioListeners(audio: HTMLAudioElement, slot: 0 | 1): void {
+    if (this._audioWithListeners.has(audio)) {
       return;
     }
 
-    this._audioWithListeners = this._audio;
+    this._audioWithListeners.add(audio);
 
-    this._audio.addEventListener('ended', () => {
+    audio.addEventListener('ended', () => {
+      if (slot !== this._activeSlot) {
+        return;
+      }
 
+      this._clearSavedPosition(this.currentTrack().id);
       this._advanceTrack(true);
-
     });
 
+    audio.addEventListener('timeupdate', () => {
+      if (slot !== this._activeSlot || this.isDragging()) {
+        return;
+      }
 
+      if (this._pendingSeekTime !== null) {
+        this._tryFlushPendingSeek(audio);
+        return;
+      }
 
-    this._audio.addEventListener('timeupdate', () => {
+      this.currentTime.set(audio.currentTime);
 
-      if (!this._audio || this.isDragging()) {
+      if (Number.isFinite(audio.duration) && audio.duration > 0) {
+        this.duration.set(audio.duration);
+      }
+
+      this._throttledSavePosition(audio.currentTime);
+    });
+
+    audio.addEventListener('progress', () => {
+      if (slot !== this._activeSlot) {
+        return;
+      }
+
+      this._tryFlushPendingSeek(audio);
+    });
+
+    audio.addEventListener('loadeddata', () => {
+      if (slot !== this._activeSlot) {
+        return;
+      }
+
+      this._tryFlushPendingSeek(audio);
+    });
+
+    audio.addEventListener('canplay', () => {
+      if (slot !== this._activeSlot) {
+        return;
+      }
+
+      this._tryFlushPendingSeek(audio);
+    });
+
+    audio.addEventListener('seeked', () => {
+      if (slot !== this._activeSlot) {
+        return;
+      }
+
+      if (this._pendingSeekTime !== null) {
+        const target = this._pendingSeekTime;
+
+        if (Math.abs(audio.currentTime - target) < 0.5) {
+          this._clearPendingSeek();
+          this.currentTime.set(audio.currentTime);
+          this._persistCurrentPosition();
+        } else if (this._canSeekTo(audio, target)) {
+          audio.currentTime = target;
+        }
 
         return;
-
       }
 
-
-
-      this.currentTime.set(this._audio.currentTime);
-
-
-
-      if (this._audio.duration) {
-
-        this.duration.set(this._audio.duration);
-
-      }
-
+      this.currentTime.set(audio.currentTime);
     });
 
-
-
-    this._audio.addEventListener('loadedmetadata', () => {
-
-      if (this._audio) {
-
-        this.duration.set(this._audio.duration);
-
+    audio.addEventListener('loadedmetadata', () => {
+      if (slot !== this._activeSlot) {
+        return;
       }
 
+      if (Number.isFinite(audio.duration) && audio.duration > 0) {
+        this.duration.set(audio.duration);
+      }
     });
-
   }
 
 
@@ -960,6 +1059,39 @@ export class MusicPlayerService {
 
       this.repeatMode.set(cachedRepeat as ERepeatMode);
 
+    }
+
+    const crossfadeItem: ICacheItem = { name: ECacheItemName.CROSSFADE_ENABLED };
+    const cachedCrossfade = this._cacheService.useCacheService(
+      crossfadeItem,
+      ETypeCache.LOCAL,
+      ETypeActionCache.LOAD,
+    );
+
+    if (cachedCrossfade !== null && cachedCrossfade !== undefined) {
+      this.crossfadeEnabled.set(JSON.parse(cachedCrossfade) === true);
+    }
+
+    const crossfadeDurationItem: ICacheItem = {
+      name: ECacheItemName.CROSSFADE_DURATION_SEC,
+    };
+    const cachedDuration = this._cacheService.useCacheService(
+      crossfadeDurationItem,
+      ETypeCache.LOCAL,
+      ETypeActionCache.LOAD,
+    );
+
+    if (cachedDuration) {
+      const parsed = Number.parseInt(cachedDuration, 10);
+
+      if (!Number.isNaN(parsed)) {
+        this.crossfadeDurationSec.set(
+          Math.min(
+            CROSSFADE_DURATION_MAX_SEC,
+            Math.max(CROSSFADE_DURATION_MIN_SEC, parsed),
+          ),
+        );
+      }
     }
 
   }
@@ -1100,6 +1232,377 @@ export class MusicPlayerService {
 
   }
 
+  private _getActiveAudio(): HTMLAudioElement | null {
+    return this._audioElements?.[this._activeSlot] ?? null;
+  }
+
+  private _cancelCrossfade(): void {
+    if (this._crossfadeFrameId !== null) {
+      cancelAnimationFrame(this._crossfadeFrameId);
+      this._crossfadeFrameId = null;
+    }
+  }
+
+  private _applyVolumeToSlot(slot: 0 | 1, multiplier: number): void {
+    if (!this._audioElements) {
+      return;
+    }
+
+    this._audioElements[slot].volume = (this.volume() / 100) * multiplier;
+  }
+
+  private async _crossfadeToTrack(
+    token: number,
+    track: ITrack,
+    restorePosition: boolean,
+  ): Promise<void> {
+    if (!this._audioElements) {
+      return;
+    }
+
+    const outgoingSlot = this._activeSlot;
+    const incomingSlot: 0 | 1 = outgoingSlot === 0 ? 1 : 0;
+    const outgoing = this._audioElements[outgoingSlot];
+    const incoming = this._audioElements[incomingSlot];
+    const durationMs = this.crossfadeDurationSec() * 1000;
+
+    this.currentTime.set(0);
+    this.duration.set(0);
+
+    incoming.pause();
+    incoming.src = track.src;
+    incoming.load();
+
+    try {
+      await this._waitForCanPlay(token, incoming);
+
+      if (token !== this._loadToken) {
+        return;
+      }
+
+      if (restorePosition) {
+        this._applySavedPosition(incoming, track.id);
+      } else {
+        incoming.currentTime = 0;
+      }
+
+      if (incoming.duration) {
+        this.duration.set(incoming.duration);
+      }
+
+      this._endTrackLoading(token);
+
+      this._applyVolumeToSlot(incomingSlot, 0);
+      await incoming.play();
+
+      if (token !== this._loadToken) {
+        incoming.pause();
+        return;
+      }
+
+      const start = performance.now();
+
+      const animate = () => {
+        if (token !== this._loadToken) {
+          return;
+        }
+
+        const progress = Math.min(1, (performance.now() - start) / durationMs);
+        this._applyVolumeToSlot(outgoingSlot, 1 - progress);
+        this._applyVolumeToSlot(incomingSlot, progress);
+        this.currentTime.set(incoming.currentTime);
+
+        if (incoming.duration) {
+          this.duration.set(incoming.duration);
+        }
+
+        if (progress < 1) {
+          this._crossfadeFrameId = requestAnimationFrame(animate);
+          return;
+        }
+
+        this._crossfadeFrameId = null;
+        outgoing.pause();
+        outgoing.currentTime = 0;
+        this._activeSlot = incomingSlot;
+        this._applyVolumeToSlot(incomingSlot, 1);
+        this._applyVolumeToSlot(outgoingSlot, 0);
+        this.isPlaying.set(true);
+        this.currentTime.set(incoming.currentTime);
+        this._updateMediaSessionPlaybackState();
+      };
+
+      this._crossfadeFrameId = requestAnimationFrame(animate);
+    } catch {
+      if (token === this._loadToken) {
+        this.isPlaying.set(false);
+        this._updateMediaSessionPlaybackState();
+        this._notifyAudioError(track);
+      }
+    }
+  }
+
+  private _getSavedPosition(trackId: string): number {
+    return this._positionsCache[trackId] ?? 0;
+  }
+
+  private _clearSavedPosition(trackId: string): void {
+    if (!(trackId in this._positionsCache)) {
+      return;
+    }
+
+    delete this._positionsCache[trackId];
+    this._persistPositions();
+  }
+
+  private _applySavedPosition(audio: HTMLAudioElement, trackId: string): void {
+    const saved = this._getSavedPosition(trackId);
+
+    if (saved > 0 && audio.duration && saved < audio.duration * POSITION_SAVE_END_THRESHOLD) {
+      this._seekToTime(audio, saved);
+      return;
+    }
+
+    this._clearPendingSeek();
+    audio.currentTime = 0;
+    this.currentTime.set(0);
+  }
+
+  private _seekToTime(audio: HTMLAudioElement, time: number): void {
+    const duration = audio.duration;
+
+    if (!Number.isFinite(duration) || duration <= 0) {
+      return;
+    }
+
+    const target = Math.min(duration, Math.max(0, time));
+    this.currentTime.set(target);
+
+    if (this._canSeekTo(audio, target)) {
+      this._clearPendingSeek();
+      audio.currentTime = target;
+      this._persistCurrentPosition();
+      return;
+    }
+
+    this._pendingSeekTime = target;
+    this._tryFlushPendingSeek(audio);
+  }
+
+  private _canSeekTo(audio: HTMLAudioElement, time: number): boolean {
+    const ranges = audio.seekable;
+
+    if (!ranges.length) {
+      return time <= 0.05;
+    }
+
+    for (let i = 0; i < ranges.length; i++) {
+      if (time >= ranges.start(i) - 0.05 && time <= ranges.end(i) + 0.05) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  private _tryFlushPendingSeek(audio: HTMLAudioElement): void {
+    if (this._pendingSeekTime === null) {
+      return;
+    }
+
+    const target = this._pendingSeekTime;
+
+    if (!this._canSeekTo(audio, target)) {
+      return;
+    }
+
+    this._clearPendingSeek();
+    audio.currentTime = target;
+    this.currentTime.set(target);
+    this._persistCurrentPosition();
+  }
+
+  private _clearPendingSeek(): void {
+    this._pendingSeekTime = null;
+  }
+
+  private _persistCurrentPosition(): void {
+    const audio = this._getActiveAudio();
+
+    if (!audio) {
+      return;
+    }
+
+    this._savePositionForTrack(
+      this.currentTrack().id,
+      audio.currentTime,
+      audio.duration || this.duration(),
+    );
+    this._saveLastPlayback(audio.currentTime);
+  }
+
+  private _throttledSavePosition(time: number): void {
+    const now = Date.now();
+
+    if (now - this._lastPositionSaveAt < POSITION_SAVE_INTERVAL_MS) {
+      return;
+    }
+
+    this._lastPositionSaveAt = now;
+    this._savePositionForTrack(
+      this.currentTrack().id,
+      time,
+      this.duration(),
+    );
+    this._saveLastPlayback(time);
+  }
+
+  private _savePositionForTrack(
+    trackId: string,
+    time: number,
+    duration: number,
+  ): void {
+    if (time < MIN_POSITION_TO_SAVE_SEC) {
+      this._clearSavedPosition(trackId);
+      return;
+    }
+
+    if (duration && time / duration >= POSITION_SAVE_END_THRESHOLD) {
+      this._clearSavedPosition(trackId);
+      return;
+    }
+
+    this._positionsCache[trackId] = time;
+    this._persistPositions();
+  }
+
+  private _persistPositions(): void {
+    const item: ICacheItem = {
+      name: ECacheItemName.PLAYBACK_POSITIONS,
+      value: JSON.stringify(this._positionsCache),
+    };
+
+    this._cacheService.useCacheService(
+      item,
+      ETypeCache.LOCAL,
+      ETypeActionCache.SAVE,
+    );
+  }
+
+  private _loadPositionsFromCache(): void {
+    const item: ICacheItem = { name: ECacheItemName.PLAYBACK_POSITIONS };
+    const cached = this._cacheService.useCacheService(
+      item,
+      ETypeCache.LOCAL,
+      ETypeActionCache.LOAD,
+    );
+
+    if (!cached) {
+      return;
+    }
+
+    try {
+      const parsed: unknown = JSON.parse(cached);
+
+      if (parsed && typeof parsed === 'object') {
+        this._positionsCache = parsed as Record<string, number>;
+      }
+    } catch {
+      this._positionsCache = {};
+    }
+  }
+
+  private _saveLastPlayback(currentTime: number): void {
+    const item: ICacheItem = {
+      name: ECacheItemName.LAST_PLAYBACK,
+      value: JSON.stringify({
+        trackId: this.currentTrack().id,
+        currentTime,
+      }),
+    };
+
+    this._cacheService.useCacheService(
+      item,
+      ETypeCache.LOCAL,
+      ETypeActionCache.SAVE,
+    );
+  }
+
+  private _loadLastPlayback(): { trackId: string; currentTime: number } | null {
+    const item: ICacheItem = { name: ECacheItemName.LAST_PLAYBACK };
+    const cached = this._cacheService.useCacheService(
+      item,
+      ETypeCache.LOCAL,
+      ETypeActionCache.LOAD,
+    );
+
+    if (!cached) {
+      return null;
+    }
+
+    try {
+      const parsed = JSON.parse(cached) as {
+        trackId?: string;
+        currentTime?: number;
+      };
+
+      if (!parsed.trackId) {
+        return null;
+      }
+
+      return {
+        trackId: parsed.trackId,
+        currentTime: parsed.currentTime ?? 0,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  private async _restoreLastPlayback(): Promise<void> {
+    const last = this._loadLastPlayback();
+
+    if (!last) {
+      return;
+    }
+
+    const index = this.playlist().findIndex((track) => track.id === last.trackId);
+
+    if (index === -1) {
+      return;
+    }
+
+    if (last.currentTime > 0) {
+      this._positionsCache[last.trackId] = last.currentTime;
+    }
+
+    this._selectTrack(index, false, true, false, true);
+  }
+
+  private _persistCrossfadePreferences(): void {
+    const enabledItem: ICacheItem = {
+      name: ECacheItemName.CROSSFADE_ENABLED,
+      value: JSON.stringify(this.crossfadeEnabled()),
+    };
+
+    this._cacheService.useCacheService(
+      enabledItem,
+      ETypeCache.LOCAL,
+      ETypeActionCache.SAVE,
+    );
+
+    const durationItem: ICacheItem = {
+      name: ECacheItemName.CROSSFADE_DURATION_SEC,
+      value: this.crossfadeDurationSec().toString(),
+    };
+
+    this._cacheService.useCacheService(
+      durationItem,
+      ETypeCache.LOCAL,
+      ETypeActionCache.SAVE,
+    );
+  }
+
   private _setupMediaSession(): void {
     if (
       !this._isBrowser ||
@@ -1113,7 +1616,10 @@ export class MusicPlayerService {
 
     try {
       navigator.mediaSession.setActionHandler('play', () => {
-        void this._safePlay();
+        const audio = this._getActiveAudio();
+        if (audio) {
+          void this._safePlay(audio);
+        }
       });
       navigator.mediaSession.setActionHandler('pause', () => {
         this.pause();
@@ -1161,13 +1667,4 @@ export class MusicPlayerService {
 
   private _updateMediaSessionPlaybackState(): void {
     if (!this._isBrowser || !('mediaSession' in navigator)) {
-      return;
-    }
-
-    navigator.mediaSession.playbackState = this.isPlaying()
-      ? 'playing'
-      : 'paused';
-  }
-
-}
-
+      
