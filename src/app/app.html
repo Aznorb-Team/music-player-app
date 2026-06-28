@@ -193,13 +193,28 @@
     </div>
 
     <p-panel header="" class="main-application-panel__container__router-outlet">
-      <router-outlet></router-outlet>
+      <div class="route-outlet-shell">
+        @if (isRouteLoading()) {
+          <div
+            class="route-outlet-shell__loader"
+            aria-live="polite"
+            aria-busy="true"
+          >
+            <p-progressSpinner
+              strokeWidth="4"
+              animationDuration="0.8s"
+              [style]="{ width: '48px', height: '48px' }"
+            />
+            <span class="route-outlet-shell__loader-text">Загрузка раздела…</span>
+          </div>
+        }
+        <router-outlet></router-outlet>
+      </div>
     </p-panel>
-  </div>
-</div>
-<div class="music-player">
-  <div class="music-player__panel">
-    <music-player></music-player>
+
+    <p-panel header="" class="main-application-panel__container__player">
+      <music-player></music-player>
+    </p-panel>
   </div>
 </div>
 @if (showLoginDialog()) {

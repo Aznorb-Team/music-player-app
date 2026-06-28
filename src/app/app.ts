@@ -7,7 +7,16 @@ import {
   OnInit,
   signal,
 } from '@angular/core';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import {
+  NavigationCancel,
+  NavigationEnd,
+  NavigationError,
+  NavigationStart,
+  Router,
+  RouterLink,
+  RouterLinkActive,
+  RouterOutlet,
+} from '@angular/router';
 import { PanelModule } from 'primeng/panel';
 import { MenuItem } from 'primeng/api';
 import { PanelMenu } from 'primeng/panelmenu';
@@ -38,6 +47,7 @@ import { MusicPlayerService } from './services/music-player-service/music-player
 import { IMAGE_FALLBACK_URL } from './core/constants/image-fallback.const';
 import { LoginDialogComponent } from './components/login-dialog/login-dialog';
 import { ISearchResultItem } from './services/search-filter-service/search-filter-service.schema';
+import { ProgressSpinner } from 'primeng/progressspinner';
 
 @Component({
   selector: 'app-root',
@@ -61,6 +71,7 @@ import { ISearchResultItem } from './services/search-filter-service/search-filte
     Toast,
     Avatar,
     LoginDialogComponent,
+    ProgressSpinner,
   ],
   templateUrl: './app.html',
   styleUrl: './app.less',
@@ -85,8 +96,11 @@ export class App implements OnInit {
   protected readonly logoUrl = IMAGE_FALLBACK_URL;
   protected readonly showLoginDialog = signal(false);
   protected readonly searchFocused = signal(false);
+  protected readonly isRouteLoading = signal(false);
 
   protected searchControl = new FormControl('', { nonNullable: true });
+
+  private _routeLoadingDelayTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
     this._favoritesService.ensureLoaded();
@@ -103,6 +117,7 @@ export class App implements OnInit {
     this._initSideMenuConfig();
     this._subscribeOnSearch();
     this._syncSearchControlFromService();
+    this._listenRouteLoading();
   }
 
   protected submitSearch(): void {
@@ -221,5 +236,29 @@ export class App implements OnInit {
       .subscribe((query) => {
         this._searchFilter.setSearchQuery(query);
       });
+  }
+
+  private _listenRouteLoading(): void {
+    this._router.events.pipe(takeUntilDestroyed(this._dr)).subscribe((event) => {
+      if (event instanceof NavigationStart) {
+        this._routeLoadingDelayTimer = setTimeout(() => {
+          this.isRouteLoading.set(true);
+        }, 120);
+        return;
+      }
+
+      if (
+        event instanceof NavigationEnd ||
+        event instanceof NavigationCancel ||
+        event instanceof NavigationError
+      ) {
+        if (this._routeLoadingDelayTimer !== null) {
+          clearTimeout(this._routeLoadingDelayTimer);
+          this._routeLoadingDelayTimer = null;
+        }
+
+        this.isRouteLoading.set(false);
+      }
+    });
   }
 }
