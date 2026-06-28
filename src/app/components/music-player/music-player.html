@@ -76,12 +76,16 @@
       [progress]="progressPercent()"
       [duration]="playerService.duration()"
       [peaks]="waveformPeaks()"
+      [loading]="isTimelineLoading()"
       (seekStart)="onSeekStart()"
       (seekEnd)="onSeekEnd($event)"
     />
-    <div class="container__timeline-container__time">
-      <span>{{ playerService.currentTime() | time }}</span>
-      <span>{{ playerService.duration() | time }}</span>
+    <div
+      class="container__timeline-container__time"
+      [class.container__timeline-container__time--loading]="isTimelineLoading()"
+    >
+      <span>{{ isTimelineLoading() ? '--:--' : (playerService.currentTime() | time) }}</span>
+      <span>{{ isTimelineLoading() ? '--:--' : (playerService.duration() | time) }}</span>
     </div>
   </div>
   <div class="container__controls-player">

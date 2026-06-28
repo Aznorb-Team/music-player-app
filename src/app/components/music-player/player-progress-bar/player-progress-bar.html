@@ -1,6 +1,7 @@
 <div
   #track
   class="progress"
+  [class.progress--loading]="loading()"
   (pointerdown)="onPointerDown($event)"
   (pointermove)="onPointerMove($event)"
   (pointerup)="onPointerUp($event)"
@@ -20,6 +21,11 @@
     ></canvas>
   </div>
   <div class="progress__playhead" [style.left.%]="progress()"></div>
+  @if (loading()) {
+    <div class="progress__loader" aria-hidden="true">
+      <span class="progress__spinner"></span>
+    </div>
+  }
   @if (previewVisible()) {
     <div class="progress__tooltip" [style.left.%]="previewPercent()">
       {{ previewTime() | time }}

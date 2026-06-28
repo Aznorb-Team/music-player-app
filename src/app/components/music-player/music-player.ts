@@ -56,8 +56,13 @@ export class MusicPlayerComponent implements OnInit, AfterViewInit, OnDestroy {
   protected readonly repeatMode = ERepeatMode;
 
   protected readonly waveformPeaks = signal<number[]>([]);
+  protected readonly waveformLoading = signal(false);
 
   private _waveformLoadToken = 0;
+
+  protected readonly isTimelineLoading = computed(
+    () => this.playerService.isTrackLoading() || this.waveformLoading(),
+  );
 
   protected volumeForm = new FormControl<number>(100);
 
@@ -167,13 +172,20 @@ export class MusicPlayerComponent implements OnInit, AfterViewInit, OnDestroy {
   private async _loadWaveform(src: string): Promise<void> {
     const token = ++this._waveformLoadToken;
     this.waveformPeaks.set([]);
+    this.waveformLoading.set(true);
 
-    const peaks = await this._waveformService.getPeaks(src);
+    try {
+      const peaks = await this._waveformService.getPeaks(src);
 
-    if (token !== this._waveformLoadToken) {
-      return;
+      if (token !== this._waveformLoadToken) {
+        return;
+      }
+
+      this.waveformPeaks.set(peaks);
+    } finally {
+      if (token === this._waveformLoadToken) {
+        this.waveformLoading.set(false);
+      }
     }
-
-    this.waveformPeaks.set(peaks);
   }
 }

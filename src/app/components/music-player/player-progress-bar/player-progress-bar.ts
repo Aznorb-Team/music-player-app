@@ -28,6 +28,7 @@ export class PlayerProgressBarComponent implements AfterViewInit, OnDestroy {
   readonly progress = input(0);
   readonly duration = input(0);
   readonly peaks = input<number[]>([]);
+  readonly loading = input(false);
 
   readonly seekStart = output<void>();
   readonly seekEnd = output<number>();
@@ -77,6 +78,10 @@ export class PlayerProgressBarComponent implements AfterViewInit, OnDestroy {
   }
 
   protected onPointerDown(event: PointerEvent): void {
+    if (this.loading()) {
+      return;
+    }
+
     if (event.button !== 0) {
       return;
     }

@@ -214,4 +214,8 @@ describe('MusicPlayerService', () => {
     service.setCrossfadeDurationSec(0);
     expect(service.crossfadeDurationSec()).toBe(1);
   });
+
+  it('should expose track loading state', () => {
+    expect(service.isTrackLoading()).toBeFalse();
+  });
 });

@@ -1334,6 +1334,8 @@ export class MusicPlayerService {
 
       this._crossfadeFrameId = requestAnimationFrame(animate);
     } catch {
+      this._endTrackLoading(token);
+
       if (token === this._loadToken) {
         this.isPlaying.set(false);
         this._updateMediaSessionPlaybackState();
@@ -1424,6 +1426,16 @@ export class MusicPlayerService {
 
   private _clearPendingSeek(): void {
     this._pendingSeekTime = null;
+  }
+
+  private _beginTrackLoading(): void {
+    this.isTrackLoading.set(true);
+  }
+
+  private _endTrackLoading(token: number): void {
+    if (token === this._loadToken) {
+      this.isTrackLoading.set(false);
+    }
   }
 
   private _persistCurrentPosition(): void {
@@ -1667,4 +1679,13 @@ export class MusicPlayerService {
 
   private _updateMediaSessionPlaybackState(): void {
     if (!this._isBrowser || !('mediaSession' in navigator)) {
-      
+      return;
+    }
+
+    navigator.mediaSession.playbackState = this.isPlaying()
+      ? 'playing'
+      : 'paused';
+  }
+
+}
+

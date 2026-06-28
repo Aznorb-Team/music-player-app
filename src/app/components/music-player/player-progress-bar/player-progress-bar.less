@@ -9,6 +9,30 @@
   touch-action: none;
   user-select: none;
 
+  &--loading {
+    cursor: default;
+  }
+
+  &__loader {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--p-content-background) 55%, transparent);
+    z-index: 3;
+    pointer-events: none;
+  }
+
+  &__spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid color-mix(in srgb, var(--p-text-muted-color) 35%, transparent);
+    border-top-color: var(--p-button-outlined-warn-color);
+    border-radius: 50%;
+    animation: progress-spin 0.75s linear infinite;
+  }
+
   &__waveform {
     position: absolute;
     inset: 0;
@@ -54,5 +78,11 @@
     box-shadow: 0 2px 8px rgb(0 0 0 / 20%);
     pointer-events: none;
     z-index: 2;
+  }
+}
+
+@keyframes progress-spin {
+  to {
+    transform: rotate(360deg);
   }
 }
